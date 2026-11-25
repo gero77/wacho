@@ -91,6 +91,9 @@ main{padding-block:28px 64px;display:grid;gap:28px}
 .adn-tag .bar i{position:absolute;inset:0 auto 0 0;background:var(--cobalt)}
 .adn-tag.used{opacity:.45}
 .adn-tag.dt{border-style:dashed}
+.adn-br{display:grid;gap:6px;border-top:1px dashed var(--line);padding-top:8px}
+.adn-br>span{font-size:.8rem;color:var(--mut)}
+.adn-tag.br{background:var(--soft);color:var(--cobalt);border-color:transparent;font-weight:500}
 
 /* Dial */
 .dial{display:grid;gap:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0}
@@ -180,6 +183,7 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
       <div class="adn" id="adn" hidden>
         <div class="adn-h"><strong id="adn-title">ADN sonoro</strong><span id="adn-sub">Tocá un rasgo para sumarlo al género</span></div>
         <div class="adn-tags" id="adn-tags"></div>
+        <div class="adn-br" id="adn-br" hidden><span>Bandas puente, parecidas a todas:</span><div class="adn-tags" id="adn-bridges"></div></div>
       </div>
     </div>
     <div class="line">
@@ -240,12 +244,12 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
 <script>
 "use strict";
 // ---------- Config ----------
-const LASTFM_DEFAULT = ""; // key pública de la app; cada dispositivo puede usar la suya desde Configuración
+const LASTFM_DEFAULT = "ea3cfd93d07337cc884043a154b083c9"; // key pública de la app (solo lectura); cada dispositivo puede usar la suya desde Configuración
 const LEVELS = [
-  { n: "Masivo",   min: 1500000, d: "+1,5 M" },
-  { n: "Conocido", min: 400000,  d: "400 k–1,5 M" },
-  { n: "De culto", min: 80000,   d: "80–400 k" },
-  { n: "Under",    min: 0,       d: "−80 k" },
+  { n: "Masivo",   min: 2500000, d: "+2,5 M" },
+  { n: "Conocido", min: 700000,  d: "700 k–2,5 M" },
+  { n: "De culto", min: 150000,  d: "150–700 k" },
+  { n: "Under",    min: 0,       d: "−150 k" },
 ];
 const DECADES = [1950,1960,1970,1980,1990,2000,2010,2020];
 const JUNK = new Set(["seen live","favorites","favourites","favorite","favourite","love","awesome","beautiful","amazing","my favorite","albums i own","favorite artists","favourite artists","best","good","cool","all","under 2000 listeners","spotify","fip","check out","female","male","uk","usa","american","british","english","canadian","australian","german","french","japanese","swedish","icelandic","irish","scottish","norwegian","argentina","argentine","brazil","mexico","spain","new york","london","manchester","bristol","glasgow","sheffield","chicago","seattle","los angeles","montreal","berlin","tokyo","10s","00s","90s","80s","70s","60s","50s","2010s","2000s","1990s","1980s","1970s","1960s","1950s"]);
@@ -298,7 +302,7 @@ function limiter(n) {
   const next = () => { if (active >= n || !q.length) return; active++; const { f, res, rej } = q.shift(); f().then(res, rej).finally(() => { active--; next(); }); };
   return f => new Promise((res, rej) => { q.push({ f, res, rej }); next(); });
 }
-const lfmQ = limiter(5);
+const lfmQ = limiter(8);
 let mbChain = Promise.resolve(), mbLast = 0;
 function mbQ(f) {
   const p = mbChain.then(async () => { const w = mbLast + 1100 - Date.now(); if (w > 0) await sleep(w); try { return await f(); } finally { mbLast = Date.now(); } });
@@ -369,14 +373,19 @@ async function mbAlbums(artists) {
     return t;
   });
   const q = `(${terms.join(" OR ")}) AND primarytype:album AND ${BAD_TYPES}${decadeRanges()}`;
-  return cached("mb:" + q, () => mbQ(async () => {
-    const r = await fetch("https://musicbrainz.org/ws/2/release-group/?fmt=json&limit=100&query=" + encodeURIComponent(q));
-    if (!r.ok) throw new Error("MusicBrainz no respondió (" + r.status + "). Probá de nuevo en unos segundos.");
-    const j = await r.json();
-    return arr(j["release-groups"]).map(g => ({
-      id: g.id, title: g.title, date: g["first-release-date"] || "",
-      arid: g["artist-credit"]?.[0]?.artist?.id || "", aname: g["artist-credit"]?.[0]?.name || "",
-    }));
+  return cached("mb:" + q, async () => {
+    for (let i = 0; ; i++) {
+      const r = await mbQ(() => fetch("https://musicbrainz.org/ws/2/release-group/?fmt=json&limit=100&query=" + encodeURIComponent(q)));
+      if (r.ok) return parseRgs(await r.json());
+      if ((r.status === 503 || r.status === 429) && i < 4) { await sleep(1500 * (i + 1)); continue; } // MusicBrainz limita a 1 consulta por segundo
+      throw new Error("MusicBrainz no respondió (" + r.status + "). Probá de nuevo en unos segundos.");
+    }
+  });
+}
+function parseRgs(j) {
+  return arr(j["release-groups"]).map(g => ({
+    id: g.id, title: g.title, date: g["first-release-date"] || "",
+    arid: g["artist-credit"]?.[0]?.artist?.id || "", aname: g["artist-credit"]?.[0]?.name || "",
   }));
 }
 
@@ -388,7 +397,8 @@ function setStatus(msg, kind) {
 }
 const tagMatches = (artistTags, wanted) => {
   const at = artistTags.map(tagNorm);
-  return wanted.some(w => { const n = tagNorm(w); return at.some(t => t === n || (n.length > 3 && (t.includes(n) || n.includes(t)))); });
+  // "post-rock" acepta "instrumental post-rock", pero "rock" no cuenta como "post-rock"
+  return wanted.some(w => { const n = tagNorm(w); return at.some(t => t === n || (n.length > 3 && t.includes(n))); });
 };
 
 async function buildPool() {
@@ -415,13 +425,15 @@ async function buildPool() {
   }
   if (tags.length) {
     setStatus("Buscando artistas del género…", "busy");
-    const pages = [[1], [1, 2], [3, 4, 5], [5, 7, 9, 11]][level];
+    // el nivel lo decide después la cantidad de oyentes; las páginas solo amplían la pesca
+    const pages = [[1], [1, 2], [1, 2, 3, 4], [2, 3, 4, 5, 6, 8]][level];
     const jobs = tags.flatMap(t => pages.map(p => lf.tagArtists(t, p).then(list => ({ t, list })).catch(() => ({ t, list: [] }))));
     for (const { t, list } of await Promise.all(jobs)) list.forEach((a, i) => add(a, (bands.length ? 0.15 : 1) * (1 - i / 200), null, t));
   }
   let list = [...pool.values()];
   // si hay bandas y géneros, primero los que aparecen en ambos lados
-  list.sort((a, b) => (b.inTag.size && b.via.size ? 1 : 0) - (a.inTag.size && a.via.size ? 1 : 0) || b.score - a.score);
+  const rank = p => (tags.length && p.inTag.size ? 2 : 0) + (p.via.size ? 1 : 0);
+  list.sort((a, b) => rank(b) - rank(a) || b.score - a.score);
   if (!bands.length) list = shuffleSoft(list);
   return list;
 }
@@ -463,13 +475,15 @@ function whyText(a) {
 // Busca discos (de la década elegida) para una tanda de artistas.
 async function albumsFor(artists) {
   const found = [];
-  for (let i = 0; i < artists.length; i += 6) {
-    const batch = artists.slice(i, i + 6);
+  for (let i = 0; i < artists.length; i += 10) {
+    const batch = artists.slice(i, i + 10);
     setStatus("Buscando discos en MusicBrainz…", "busy");
     const rgs = await mbAlbums(batch);
     await Promise.all(batch.map(async a => {
       const k = norm(a.name);
-      const mine = rgs.filter(g => (a.mbid && g.arid === a.mbid) || norm(g.aname) === k);
+      // con ID de MusicBrainz se evita confundir homónimos; si no hay coincidencias por ID, se usa el nombre
+      let mine = a.mbid ? rgs.filter(g => g.arid === a.mbid) : [];
+      if (!mine.length) mine = rgs.filter(g => norm(g.aname) === k);
       const seen = new Set(); const uniq = mine.filter(g => { const t = norm(g.title); if (seen.has(t)) return false; seen.add(t); return true; });
       if (!uniq.length) return;
       const tops = await lf.topAlbums(a.name).catch(() => []);
@@ -505,20 +519,18 @@ async function search() {
 
 async function fillMore(first) {
   const ctx = S.ctx; if (!ctx) return;
-  let cards = [];
+  const cards = [], grid = $("res");
   for (let guard = 0; cards.length < 12 && guard < 4; guard++) {
     if (S.queue.length < 8) S.queue.push(...await qualify(ctx, 18));
     if (!S.queue.length && !ctx.usedNear && ctx.near.length) { // no alcanza: sumar vecinos del nivel de al lado
       ctx.usedNear = true; ctx.near.forEach(n => n.near = true); S.queue.push(...ctx.near.sort((a, b) => b.score - a.score));
     }
     if (!S.queue.length) break;
-    const batch = S.queue.splice(0, 12);
-    cards.push(...await albumsFor(batch));
+    const got = await albumsFor(S.queue.splice(0, 10));
+    got.forEach(c => { S.shown.add(c.key); ALB.set(c.key, c); });
+    if (got.length) grid.insertAdjacentHTML("beforeend", got.map(card).join("")); // aparecen a medida que llegan
+    cards.push(...got);
   }
-  cards.forEach(c => S.shown.add(c.key));
-  const grid = $("res");
-  if (cards.length) grid.insertAdjacentHTML("beforeend", cards.map(card).join(""));
-  cards.forEach(c => ALB.set(c.key, c));
   const total = grid.children.length;
   const more = S.queue.length || ctx.cursor < ctx.pool.length || (!ctx.usedNear && ctx.near.length);
   $("more-row").hidden = !more;
@@ -671,33 +683,58 @@ async function adn() {
   if (!getKey()) return;
   $("adn").hidden = false;
   $("adn-title").textContent = bands.length > 1 ? "ADN sonoro en común" : "ADN sonoro de " + bands[0];
-  $("adn-sub").textContent = "Analizando…";
-  $("adn-tags").innerHTML = "";
+  $("adn-sub").textContent = "Analizando el sonido de cada banda y de sus vecinas…";
+  $("adn-tags").innerHTML = ""; $("adn-bridges").innerHTML = ""; $("adn-br").hidden = true;
   try {
-    const lists = await Promise.all(bands.map(b => lf.topTags(b).catch(() => [])));
+    const N = bands.length, decs = new Map();
+    const sims = await Promise.all(bands.map(b => lf.similar(b, 100).catch(e => { if (e instanceof KeyError) throw e; return []; })));
+    // Vecindario de cada banda: sus propias etiquetas (peso fuerte) + las de sus 12 bandas más parecidas.
+    const hoods = await Promise.all(bands.map(async (b, i) => {
+      const names = sims[i].slice(0, 12).map(a => a.name);
+      const [own, ...infos] = await Promise.all([lf.topTags(b).catch(() => []), ...names.map(n => lf.info(n).catch(() => null))]);
+      const w = new Map();
+      const bump = (tag, v) => {
+        tag = tag.toLowerCase().trim();
+        const dm = tag.match(/^(?:19)?([5-9]0|[0-2]0)'?s$/) || tag.match(/^(19[5-9]0|20[0-2]0)s$/);
+        if (dm) { let d = dm[1]; d = d.length === 4 ? +d : (+d >= 50 ? 1900 + +d : 2000 + +d); decs.set(d, (decs.get(d) || 0) + v); }
+        if (JUNK.has(tag) || tag.length > 28 || /^\d+$/.test(tag)) return;
+        const k = tagNorm(tag); const e = w.get(k) || { name: tag, v: 0 }; e.v += v; w.set(k, e);
+      };
+      own.forEach(t => bump(t.name, 3 * Math.max(t.count, 5) / 100));
+      infos.filter(Boolean).forEach(inf => inf.tags.forEach((t, j) => bump(t, (5 - j) / 10)));
+      const max = Math.max(...[...w.values()].map(e => e.v), 0.001);
+      w.forEach(e => e.v /= max);
+      return w;
+    }));
     if (my !== adnSeq) return;
-    const m = new Map(), decs = new Map();
-    lists.forEach(list => {
-      const seen = new Set();
-      list.forEach(t => {
-        const dm = t.name.match(/^(?:19)?([5-9]0|[0-2]0)'?s$/) || t.name.match(/^(19[5-9]0|20[0-2]0)s$/);
-        if (dm && t.count >= 10) { let d = dm[1]; d = d.length === 4 ? +d : (+d >= 50 ? 1900 + +d : 2000 + +d); decs.set(d, (decs.get(d) || 0) + t.count); }
-        if (JUNK.has(t.name) || t.count < 5 || t.name.length > 28) return;
-        const k = tagNorm(t.name); if (seen.has(k)) return; seen.add(k);
-        const e = m.get(k) || { name: t.name, n: 0, sum: 0 }; e.n++; e.sum += t.count; m.set(k, e);
-      });
-    });
-    const N = bands.length;
-    let tags = [...m.values()].map(e => ({ ...e, share: e.n / N, score: (e.sum / N) * (e.n / N) ** 1.5 }));
-    if (N > 1) tags = tags.filter(t => t.n >= 2);
+    const keys = new Set(hoods.flatMap(h => [...h.keys()]));
+    let tags = [...keys].map(k => {
+      const vs = hoods.map(h => h.get(k)?.v || 0), present = vs.filter(v => v > 0).length;
+      const name = hoods.map(h => h.get(k)?.name).find(Boolean);
+      const mean = vs.reduce((a, b) => a + b, 0) / N, min = Math.min(...vs);
+      const score = N === 1 ? mean : present === N ? Math.sqrt(mean * min) : (N >= 3 && present >= N - 1 ? mean * 0.35 : 0);
+      return { name, n: present, score };
+    }).filter(t => t.score > 0.02);
     tags.sort((a, b) => b.score - a.score);
-    S.adn = tags.slice(0, 16);
-    const decList = [...decs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([d]) => d).filter(d => DECADES.includes(d));
-    if (!S.adn.length) { $("adn-sub").textContent = N > 1 ? "Estas bandas no comparten etiquetas fuertes. Probá con otra combinación." : "Last.fm no tiene etiquetas para esta banda."; return; }
-    $("adn-sub").textContent = N > 1 ? `Lo que comparten ${N} bandas · tocá para sumarlo al género` : "Tocá un rasgo para sumarlo al género";
+    S.adn = tags.slice(0, 14);
+    // Bandas puente: parecidas a todas las bandas cargadas a la vez.
+    let bridges = [];
+    if (N > 1) {
+      const refs = new Set(bands.map(norm)), maps = sims.map(l => new Map(l.map(a => [norm(a.name), a])));
+      bridges = [...maps[0].keys()].filter(k => !refs.has(k) && maps.every(m => m.has(k)))
+        .map(k => ({ name: maps[0].get(k).name, s: maps.reduce((p, m) => p * m.get(k).match, 1) }))
+        .sort((a, b) => b.s - a.s).slice(0, 6);
+    }
+    const decList = [...decs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).filter(([, v]) => v >= 1).map(([d]) => d).filter(d => DECADES.includes(d));
+    if (!S.adn.length) { $("adn-sub").textContent = N > 1 ? "Estas bandas no comparten un sonido claro. Probá con otra combinación." : "Last.fm no tiene etiquetas para esta banda."; return; }
+    $("adn-sub").textContent = N > 1 ? `Lo que comparten ${N} bandas y sus vecinas · tocá para sumarlo al género` : "Tocá un rasgo para sumarlo al género";
     const max = S.adn[0].score;
-    $("adn-tags").innerHTML = S.adn.map((t, i) => `<button type="button" class="adn-tag" data-t="${esc(t.name)}" title="${N > 1 ? `En ${t.n} de ${N} bandas` : `Peso ${t.sum}`}">${esc(t.name)}<span class="bar"><i style="width:${Math.max(12, t.score / max * 100)}%"></i></span></button>`).join("")
-      + decList.map(d => `<button type="button" class="adn-tag dt" data-d="${d}" title="Década fuerte en estas bandas">década ’${String(d).slice(2)}</button>`).join("");
+    $("adn-tags").innerHTML = S.adn.map(t => `<button type="button" class="adn-tag" data-t="${esc(t.name)}" title="${N > 1 ? (t.n === N ? "Presente en todas" : `Presente en ${t.n} de ${N}`) : ""}">${esc(t.name)}<span class="bar"><i style="width:${Math.max(12, t.score / max * 100)}%"></i></span></button>`).join("")
+      + decList.map(d => `<button type="button" class="adn-tag dt" data-d="${d}" title="Década fuerte en este sonido">década ’${String(d).slice(2)}</button>`).join("");
+    if (bridges.length) {
+      $("adn-br").hidden = false;
+      $("adn-bridges").innerHTML = bridges.map(b => `<button type="button" class="adn-tag br" data-b="${esc(b.name)}" title="Sumar como banda de referencia">+ ${esc(b.name)}</button>`).join("");
+    }
     markAdn();
   } catch (e) { if (my === adnSeq) { $("adn-sub").textContent = e.message; if (e instanceof KeyError) showNoKey(true); } }
 }
@@ -707,6 +744,7 @@ function markAdn() {
     if (b.dataset.d) b.classList.toggle("used", S.decades.includes(+b.dataset.d));
   });
 }
+$("adn-bridges").addEventListener("click", e => { const b = e.target.closest(".adn-tag"); if (b) bandsField.add(b.dataset.b); });
 $("adn-tags").addEventListener("click", e => {
   const b = e.target.closest(".adn-tag"); if (!b) return;
   if (b.dataset.t) {
