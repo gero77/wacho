@@ -4,8 +4,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Wacho.mp3</title>
 <meta name="description" content="Recomendador de discos por banda, género, década y qué tan under lo querés.">
-<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" id="tc" content="#f7f8fb">
+<script>/* aplica el tema guardado antes de pintar, para que no parpadee */
+try { var t = localStorage.getItem("w:theme"); if (t === '"light"' || t === '"dark"') document.documentElement.dataset.theme = JSON.parse(t); } catch (e) {}
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Wacho.mp3">
 <link rel="manifest" href="manifest.webmanifest">
@@ -25,9 +27,13 @@
   --body:"Inter","Segoe UI",system-ui,sans-serif;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme:dark){:root{
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f1117; --card:#161a23; --ink:#e9ecf3; --mut:#8f97a8; --line:#262b36;
   --cobalt:#8096ff; --soft:#1c2340; --needle:#ff6a50; --ok:#4cc38a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1117; --card:#161a23; --ink:#e9ecf3; --mut:#8f97a8; --line:#262b36;
+  --cobalt:#8096ff; --soft:#1c2340; --needle:#ff6a50; --ok:#4cc38a; color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
@@ -49,7 +55,49 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:none;border:0;padding:6px 10px;border-radius:999px;color:var(--mut);font-size:.9rem}
 nav button.on{background:var(--soft);color:var(--cobalt);font-weight:600}
 nav .n{font-variant-numeric:tabular-nums;opacity:.75;margin-left:3px}
-.gear{background:none;border:1px solid var(--line);border-radius:999px;width:34px;height:34px;display:grid;place-items:center;color:var(--mut)}
+.gear{background:none;border:1px solid var(--line);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;color:var(--mut);font-size:1rem}
+.tools{display:flex;gap:6px;align-items:center}
+.pillbtn{background:var(--cobalt);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:600;font-size:.85rem}
+
+/* Tapa como botón, con play */
+button.cover{border:0;cursor:pointer;width:100%;text-align:left}
+.cover .play{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border-radius:50%;background:var(--cobalt);color:#fff;display:grid;place-items:center;font-size:1rem;padding-left:3px;box-shadow:0 6px 16px rgba(0,0,0,.35);opacity:.92;transition:transform .15s}
+.cover:hover .play{transform:scale(1.08);opacity:1}
+.acts .listen{background:var(--cobalt);border-color:var(--cobalt);color:#fff;font-weight:600}
+
+/* Ficha del disco */
+#sheet{max-width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;position:relative}
+.sh-x{position:absolute;top:12px;right:12px}
+.sh-head{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start;margin-bottom:18px}
+.cover.big{font-size:2rem}
+.sh-info{display:grid;gap:6px;min-width:0;padding-right:36px}
+.sh-info h2{margin:0;font-size:1.5rem;letter-spacing:-.02em;line-height:1.15;text-wrap:balance}
+.sh-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pl{background:var(--soft);color:var(--cobalt);text-decoration:none;border-radius:999px;padding:7px 13px;font-size:.85rem;font-weight:600}
+.pl.q{background:transparent;border:1px solid var(--line);color:var(--mut);font-weight:500}
+.tracks{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:2px}
+.tracks button{width:100%;display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;background:none;border:0;border-radius:8px;padding:10px 10px;text-align:left;font-size:.92rem;min-height:44px}
+.tracks button:hover:not(:disabled){background:var(--soft)}
+.tracks button:disabled{opacity:.45;cursor:default}
+.tracks button.on{background:var(--soft);color:var(--cobalt);font-weight:600}
+.tracks .tn{color:var(--mut);font-variant-numeric:tabular-nums;text-align:right}
+.tracks .tt{overflow-wrap:anywhere}
+.tracks .td{color:var(--mut);font-variant-numeric:tabular-nums;font-size:.82rem}
+
+/* Reproductor fijo abajo */
+.player{position:fixed;left:0;right:0;bottom:0;z-index:35;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -10px 30px -20px rgba(0,0,0,.4);padding-bottom:env(safe-area-inset-bottom,0px)}
+.pl-bar{height:3px;background:var(--line)}
+.pl-bar i{display:block;height:100%;width:0;background:var(--needle)}
+.pl-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pl-cover{width:46px;height:46px;flex:none;border:0;border-radius:4px;overflow:hidden;padding:0;color:#fff;font-family:var(--display);font-weight:800;position:relative}
+.pl-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.pl-txt{flex:1;min-width:0;display:grid;background:none;border:0;padding:0;text-align:left}
+.pl-txt strong,.pl-txt span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-txt span{font-size:.8rem;color:var(--mut)}
+.pl-ctl{display:flex;gap:4px;align-items:center}
+.pl-ctl button{width:40px;height:40px;border-radius:50%;border:0;background:none;font-size:.95rem;color:var(--ink)}
+.pl-ctl .main{background:var(--cobalt);color:#fff;width:46px;height:46px}
+body.has-player main{padding-bottom:110px}
 
 main{padding-block:28px 64px;display:grid;gap:28px}
 
@@ -123,7 +171,7 @@ main{padding-block:28px 64px;display:grid;gap:28px}
 .sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .sec-h h2{margin:0;font-family:var(--display);font-size:1.5rem;letter-spacing:-.02em}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:26px 20px}
-.rec{display:grid;gap:9px;align-content:start;min-width:0;transition:opacity .3s,transform .3s}
+.rec{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;align-content:start;min-width:0;transition:opacity .3s,transform .3s}
 .rec.out{opacity:0;transform:scale(.96)}
 .cover{position:relative;aspect-ratio:1;max-width:100%;border-radius:6px;overflow:hidden;background:var(--c);display:flex;align-items:flex-end;padding:10px;color:#fff;font-family:var(--display);font-weight:800;font-size:1.5rem;box-shadow:0 12px 24px -16px rgba(16,19,26,.6)}
 .cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -136,7 +184,7 @@ main{padding-block:28px 64px;display:grid;gap:28px}
 .acts{display:flex;gap:6px;flex-wrap:wrap}
 .acts button{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:.8rem}
 .acts button.on{background:var(--needle);border-color:var(--needle);color:#fff}
-.links{display:flex;gap:12px;font-size:.8rem}
+.links{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.8rem}
 .links a{color:var(--mut);text-decoration:none;border-bottom:1px solid var(--line)}
 .links a:hover{color:var(--cobalt);border-color:var(--cobalt)}
 .empty{border:1px dashed var(--line);border-radius:10px;padding:28px;color:var(--mut);text-align:center}
@@ -149,6 +197,11 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
 .foot{color:var(--mut);font-size:.78rem;border-top:1px solid var(--line);padding-top:16px}
 
 @media (max-width:720px){
+  .sh-head{grid-template-columns:1fr}
+  .cover.big{max-width:240px}
+  #sheet{padding:18px;max-width:calc(100vw - 16px)}
+  .pl-ctl #pl-prev{display:none}
+  nav button{padding:6px 8px}
   .line{grid-template-columns:1fr;gap:2px}
   .adn{grid-column:1}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 14px}
@@ -166,7 +219,11 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <button data-view="guardados">Guardados<span class="n" id="n-fav"></span></button>
     <button data-view="escuchados">Escuchados<span class="n" id="n-heard"></span></button>
   </nav>
-  <button class="gear" id="open-set" aria-label="Configuración" title="Configuración">⚙</button>
+  <div class="tools">
+    <button class="pillbtn" id="install" hidden>Instalar app</button>
+    <button class="gear" id="theme" aria-label="Tema" title="Tema"></button>
+    <button class="gear" id="open-set" aria-label="Configuración" title="Configuración">⚙</button>
+  </div>
 </div></header>
 
 <main class="wrap">
@@ -224,8 +281,28 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <div class="grid" id="heard-grid" style="margin-top:18px"></div>
   </section>
 
-  <p class="foot">Datos de <a href="https://www.last.fm" target="_blank" rel="noopener">Last.fm</a> y <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a>, tapas de <a href="https://coverartarchive.org" target="_blank" rel="noopener">Cover Art Archive</a>. Qué tan conocido es un artista se mide por sus oyentes en Last.fm.</p>
+  <p class="foot">Datos de <a href="https://www.last.fm" target="_blank" rel="noopener">Last.fm</a>, <a href="https://www.deezer.com" target="_blank" rel="noopener">Deezer</a> y <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a>; tapas de Deezer y <a href="https://coverartarchive.org" target="_blank" rel="noopener">Cover Art Archive</a>; previews de 30 s de Deezer. Qué tan conocido es un artista se mide con sus fans en Deezer y sus oyentes en Last.fm (se usa el mayor).</p>
 </main>
+
+<dialog id="sheet" aria-label="Disco">
+  <button class="gear sh-x" id="sh-close" aria-label="Cerrar">✕</button>
+  <div class="sh-head" id="sh-head"></div>
+  <div id="sh-tracks"></div>
+</dialog>
+
+<div class="player" id="player" hidden>
+  <div class="pl-bar"><i id="pl-bar"></i></div>
+  <div class="pl-in">
+    <button class="pl-cover" id="pl-cover" aria-label="Ver disco"></button>
+    <button class="pl-txt" id="pl-open" aria-label="Ver disco"><strong id="pl-t"></strong><span id="pl-a"></span></button>
+    <div class="pl-ctl">
+      <button id="pl-prev" aria-label="Anterior">⏮</button>
+      <button id="pl-play" class="main" aria-label="Reproducir">▶</button>
+      <button id="pl-next" aria-label="Siguiente">⏭</button>
+      <button id="pl-close" aria-label="Cerrar reproductor">✕</button>
+    </div>
+  </div>
+</div>
 
 <dialog id="set">
   <h2>Configuración</h2>
@@ -359,7 +436,8 @@ const lf = {
 };
 
 // ---------- MusicBrainz ----------
-const BAD_TYPES = 'NOT secondarytype:(compilation OR live OR remix OR soundtrack OR "dj-mix" OR demo OR interview OR spokenword OR "mixtape/street")';
+// Solo álbumes (primarytype:album deja afuera singles y EPs). Se aceptan compilados y bandas de sonido.
+const BAD_TYPES = 'NOT secondarytype:(live OR remix OR "dj-mix" OR demo OR interview OR spokenword OR "mixtape/street" OR "audio drama")';
 function decadeRanges() {
   if (!S.decades.length) return "";
   const pad = S.approx ? 2 : 0;
@@ -377,7 +455,7 @@ async function mbAlbums(artists) {
     for (let i = 0; ; i++) {
       const r = await mbQ(() => fetch("https://musicbrainz.org/ws/2/release-group/?fmt=json&limit=100&query=" + encodeURIComponent(q)));
       if (r.ok) return parseRgs(await r.json());
-      if ((r.status === 503 || r.status === 429) && i < 4) { await sleep(1500 * (i + 1)); continue; } // MusicBrainz limita a 1 consulta por segundo
+      if ((r.status === 503 || r.status === 429) && i < 6) { await sleep(2000 * (i + 1)); continue; } // MusicBrainz limita a 1 consulta por segundo
       throw new Error("MusicBrainz no respondió (" + r.status + "). Probá de nuevo en unos segundos.");
     }
   });
@@ -386,8 +464,82 @@ function parseRgs(j) {
   return arr(j["release-groups"]).map(g => ({
     id: g.id, title: g.title, date: g["first-release-date"] || "",
     arid: g["artist-credit"]?.[0]?.artist?.id || "", aname: g["artist-credit"]?.[0]?.name || "",
+    comp: arr(g["secondary-types"]).includes("Compilation"),
   }));
 }
+async function mbFetch(url) {
+  for (let i = 0; ; i++) {
+    const r = await mbQ(() => fetch(url));
+    if (r.ok) return r.json();
+    if ((r.status === 503 || r.status === 429) && i < 6) { await sleep(2000 * (i + 1)); continue; }
+    throw new Error("MusicBrainz no respondió (" + r.status + ").");
+  }
+}
+// Links a plataformas que la comunidad de MusicBrainz cargó para las ediciones de ese disco.
+const mbUrls = rg => cached("mu:" + rg, async () => {
+  const j = await mbFetch(`https://musicbrainz.org/ws/2/release?release-group=${rg}&inc=url-rels&fmt=json&limit=100`);
+  return [...new Set(arr(j.releases).flatMap(r => arr(r.relations).map(x => x.url?.resource).filter(Boolean)))];
+});
+
+// ---------- Deezer (popularidad, tapas, previews de 30 s, link directo) ----------
+// La API de Deezer no habilita CORS, así que se consulta por JSONP.
+let jpN = 0;
+function jsonp(url) {
+  return new Promise((res, rej) => {
+    const cb = "__dz" + (++jpN), s = document.createElement("script");
+    const done = () => { clearTimeout(t); delete window[cb]; s.remove(); };
+    const t = setTimeout(() => { done(); rej(new Error("Deezer no respondió.")); }, 12000);
+    window[cb] = d => { done(); res(d); };
+    s.onerror = () => { done(); rej(new Error("Deezer no respondió.")); };
+    s.src = url + (url.includes("?") ? "&" : "?") + "output=jsonp&callback=" + cb;
+    document.head.appendChild(s);
+  });
+}
+const dzLimit = limiter(4);
+let dzLast = 0;
+async function dzGet(path) { // Deezer permite ~50 consultas cada 5 s
+  for (let i = 0; ; i++) {
+    const j = await dzLimit(async () => { const w = dzLast + 120 - Date.now(); dzLast = Math.max(Date.now(), dzLast + 120); if (w > 0) await sleep(w); return jsonp("https://api.deezer.com/" + path); });
+    if (j?.error) { if (j.error.code === 4 && i < 3) { await sleep(1200 * (i + 1)); continue; } return null; }
+    return j;
+  }
+}
+const dz = {
+  artist: name => cached("dza:" + norm(name), async () => {
+    const j = await dzGet("search/artist?limit=8&q=" + encodeURIComponent(name));
+    const k = norm(name), hits = arr(j?.data).filter(a => norm(a.name) === k);
+    const best = hits.sort((a, b) => b.nb_fan - a.nb_fan)[0];
+    return best ? { id: best.id, fans: +best.nb_fan || 0 } : { id: 0, fans: 0 };
+  }),
+  albums: id => cached("dzl:" + id, async () => {
+    const j = await dzGet(`artist/${id}/albums?limit=150`);
+    return arr(j?.data).map(a => ({ id: a.id, title: a.title, type: a.record_type, cover: a.cover_big || a.cover_medium || "" }));
+  }),
+  searchAlbum: (artist, title) => cached("dzs:" + norm(artist) + "|" + norm(title), async () => {
+    const j = await dzGet("search/album?limit=10&q=" + encodeURIComponent(`${artist} ${title}`));
+    return arr(j?.data).filter(a => norm(a.artist?.name) === norm(artist)).map(a => ({ id: a.id, title: a.title, type: a.record_type, cover: a.cover_big || a.cover_medium || "" }));
+  }),
+};
+const dzTracks = new Map(); // las previews vencen a las pocas horas: solo en memoria
+async function getTracks(dzAlbum, fresh) {
+  if (!fresh && dzTracks.has(dzAlbum)) return dzTracks.get(dzAlbum);
+  const j = await dzGet(`album/${dzAlbum}/tracks?limit=100`);
+  const t = arr(j?.data).map(x => ({ title: x.title, dur: x.duration, preview: x.preview, n: x.track_position, disk: x.disk_number }));
+  dzTracks.set(dzAlbum, t); return t;
+}
+// Elige la edición de Deezer que corresponde al disco: mismo título, y álbum o compilado antes que single/EP.
+function matchDz(list, title) {
+  const n = norm(title), typeRank = t => (t === "album" || t === "compile" ? 0 : 1);
+  const hits = list.filter(a => norm(a.title) === n || norm(a.title).startsWith(n + " ") || n.startsWith(norm(a.title) + " "));
+  return hits.sort((a, b) => typeRank(a.type) - typeRank(b.type) || (norm(a.title) === n ? 0 : 1) - (norm(b.title) === n ? 0 : 1))[0] || null;
+}
+async function findDz(a, title) {
+  if (a.dzId) { const m = matchDz(await dz.albums(a.dzId).catch(() => []), title); if (m) return m; }
+  return matchDz(await dz.searchAlbum(a.name, title).catch(() => []), title);
+}
+// Popularidad: Deezer refleja mejor el streaming (sobre todo en Latinoamérica) y Last.fm cubre a los más under.
+// Un fan de Deezer equivale aprox. a 5 oyentes de Last.fm (calibrado con Radiohead, Portishead, Talk Talk).
+const popOf = (listeners, fans) => Math.max(listeners || 0, (fans || 0) * 5);
 
 // ---------- Búsqueda ----------
 function setStatus(msg, kind) {
@@ -447,12 +599,21 @@ async function qualify(ctx, want) {
   while (out.length < want && ctx.cursor < ctx.pool.length && ctx.rounds < 5) {
     const chunk = ctx.pool.slice(ctx.cursor, ctx.cursor + 30); ctx.cursor += 30; ctx.rounds++;
     setStatus(`Midiendo qué tan conocidas son ${ctx.cursor} bandas…`, "busy");
-    const infos = await Promise.all(chunk.map(c => lf.info(c.name).catch(e => { if (e instanceof KeyError) throw e; return null; })));
+    const infos = await Promise.all(chunk.map(async c => {
+      const inf = await lf.info(c.name).catch(e => { if (e instanceof KeyError) throw e; return null; });
+      if (!inf) return null;
+      const okTag = !S.tags.length || c.inTag.size > 0 || tagMatches(inf.tags, S.tags);
+      // Deezer solo puede subir a un artista de nivel: si Last.fm ya lo pone más arriba que el pedido, no hace falta consultarlo
+      const need = okTag && levelOf(inf.listeners) >= S.level - 1;
+      const d = need ? await dz.artist(inf.name).catch(() => ({ id: 0, fans: 0 })) : { id: 0, fans: 0 };
+      return { ...inf, dzId: d.id, fans: d.fans };
+    }));
     infos.forEach((inf, i) => {
       if (!inf) return;
       const c = chunk[i];
-      c.listeners = inf.listeners; c.tags = inf.tags; c.mbid = c.mbid || inf.mbid; c.name = inf.name;
-      c.lvl = levelOf(inf.listeners);
+      c.listeners = inf.listeners; c.fans = inf.fans; c.dzId = inf.dzId; c.tags = inf.tags; c.mbid = c.mbid || inf.mbid; c.name = inf.name;
+      c.pop = popOf(inf.listeners, inf.fans);
+      c.lvl = levelOf(c.pop);
       const okTag = !S.tags.length || c.inTag.size > 0 || tagMatches(inf.tags, S.tags);
       if (!okTag) return;
       if (c.lvl === S.level) out.push(c);
@@ -489,12 +650,18 @@ async function albumsFor(artists) {
       const tops = await lf.topAlbums(a.name).catch(() => []);
       const rank = new Map(tops.map((t, i) => [norm(t.name), i]));
       const img = new Map(tops.map(t => [norm(t.name), t.img]));
-      uniq.sort((x, y) => (rank.get(norm(x.title)) ?? 999) - (rank.get(norm(y.title)) ?? 999) || x.date.localeCompare(y.date));
-      const pick = uniq.find(g => !S.heard[albumKey(a.name, g.title)] && !S.shown.has(albumKey(a.name, g.title)));
-      if (!pick) return;
+      // los más escuchados primero; los compilados solo si no hay un disco de estudio a mano
+      const score = g => (rank.get(norm(g.title)) ?? 999) + (g.comp ? 15 : 0);
+      uniq.sort((x, y) => score(x) - score(y) || x.date.localeCompare(y.date));
+      const opts = uniq.filter(g => !S.heard[albumKey(a.name, g.title)] && !S.shown.has(albumKey(a.name, g.title))).slice(0, 3);
+      if (!opts.length) return;
+      // preferir la primera opción que esté en Deezer (tiene previews y link directo)
+      let pick = opts[0], dzA = null;
+      for (const g of opts) { const m = await findDz(a, g.title); if (m) { pick = g; dzA = m; break; } }
       found.push({
         key: albumKey(a.name, pick.title), title: pick.title, artist: a.name, year: pick.date.slice(0, 4),
-        rg: pick.id, img: img.get(norm(pick.title)) || "", listeners: a.listeners, lvl: a.lvl,
+        rg: pick.id, comp: pick.comp, img: dzA?.cover || img.get(norm(pick.title)) || "", dz: dzA?.id || 0,
+        listeners: a.listeners, fans: a.fans, lvl: a.lvl,
         tags: (a.tags || []).slice(0, 3), why: whyText(a), near: a.near || false,
       });
     }));
@@ -553,20 +720,80 @@ function handleErr(e) {
 
 // ---------- Tarjetas ----------
 const ALB = new Map();
+const PLATFORMS = [
+  { p: "spotify", n: "Spotify" }, { p: "youtube", n: "YouTube Music" }, { p: "deezer", n: "Deezer" },
+  { p: "apple", n: "Apple Music" }, { p: "bandcamp", n: "Bandcamp" },
+];
 function card(a) {
-  const q = encodeURIComponent(a.artist + " " + a.title);
   const fav = !!S.fav[a.key], heard = !!S.heard[a.key];
   const caa = a.rg ? `https://coverartarchive.org/release-group/${a.rg}/front-250` : "";
-  const src = caa || a.img;
+  const src = a.img || caa, alt = a.img && caa ? caa : "";
+  const known = cget("ln:" + a.key) || {};
+  const pops = [a.fans ? `${fmtN(a.fans)} fans Deezer` : "", a.listeners ? `${fmtN(a.listeners)} Last.fm` : ""].filter(Boolean).join(" · ");
   return `<article class="rec" data-k="${esc(a.key)}">
-    <div class="cover" style="background:${coverBg(a.artist)}">${esc(ini(a.artist))}${src ? `<img loading="lazy" alt="" src="${esc(src)}"${caa && a.img ? ` data-alt="${esc(a.img)}"` : ""}>` : ""}</div>
+    <button class="cover" data-act="open" style="background:${coverBg(a.artist)}" aria-label="Escuchar ${esc(a.title)}">${esc(ini(a.artist))}${src ? `<img loading="lazy" alt="" src="${esc(src)}"${alt ? ` data-alt="${esc(alt)}"` : ""}>` : ""}${a.dz ? `<span class="play" aria-hidden="true">▶</span>` : ""}</button>
     <div><h3>${esc(a.title)}</h3><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}</div></div>
     <p class="why">${esc(a.why)}</p>
-    <div class="meta"><span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.listeners ? `<span>${fmtN(a.listeners)} oyentes</span>` : ""}${a.tags.slice(0, 2).map(t => `<span>${esc(t)}</span>`).join("")}</div>
-    <div class="acts"><button data-act="fav" class="${fav ? "on" : ""}">${fav ? "♥ Guardado" : "♡ Guardar"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button></div>
-    <div class="links"><a href="https://open.spotify.com/search/${q}" target="_blank" rel="noopener">Spotify</a><a href="https://www.youtube.com/results?search_query=${q}+full+album" target="_blank" rel="noopener">YouTube</a><a href="https://bandcamp.com/search?q=${q}&item_type=a" target="_blank" rel="noopener">Bandcamp</a></div>
+    <div class="meta"><span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.comp ? "<span>compilado</span>" : ""}${pops ? `<span>${pops}</span>` : ""}</div>
+    <div class="acts"><button data-act="open" class="listen">${a.dz ? "▶ Escuchar" : "Ver disco"}</button><button data-act="fav" class="${fav ? "on" : ""}" aria-label="${fav ? "Quitar de guardados" : "Guardar"}">${fav ? "♥" : "♡"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button></div>
+    <div class="links">${PLATFORMS.filter(x => x.p !== "bandcamp" || known.bandcamp).map(x => `<a href="${esc(known[x.p] || fallbackUrl(x.p, a))}" data-p="${x.p}" target="_blank" rel="noopener">${x.n.replace(" Music", "")}</a>`).join("")}</div>
   </article>`;
 }
+
+// ---------- Links directos ----------
+function fallbackUrl(p, a) {
+  const q = encodeURIComponent(a.artist + " " + a.title);
+  return {
+    spotify: `https://open.spotify.com/search/${q}/albums`, youtube: `https://music.youtube.com/search?q=${q}`,
+    deezer: a.dz ? `https://www.deezer.com/album/${a.dz}` : `https://www.deezer.com/search/${q}/album`,
+    apple: `https://music.apple.com/search?term=${q}`, bandcamp: `https://bandcamp.com/search?q=${q}&item_type=a`,
+  }[p];
+}
+async function resolveLinks(a) {
+  const c = cget("ln:" + a.key); if (c) return c;
+  const out = {};
+  if (a.dz) out.deezer = `https://www.deezer.com/album/${a.dz}`;
+  if (a.rg) {
+    for (const u of await mbUrls(a.rg).catch(() => [])) {
+      if (!out.spotify && /open\.spotify\.com\/album\//.test(u)) out.spotify = u;
+      else if (!out.bandcamp && /bandcamp\.com\/album\//.test(u)) out.bandcamp = u;
+      else if (!out.apple && /(music|itunes)\.apple\.com\/.*album/.test(u)) out.apple = u.replace("itunes.apple.com", "music.apple.com");
+      else if (!out.youtube && /music\.youtube\.com\/(playlist|browse)/.test(u)) out.youtube = u;
+      else if (!out.deezer && /deezer\.com\/.*album\//.test(u)) out.deezer = u;
+    }
+  }
+  if (!out.apple && a.dz) { // por código de barras (UPC) de la edición de Deezer: coincidencia exacta
+    try {
+      const info = await dzGet(`album/${a.dz}`);
+      if (info?.upc) {
+        const j = await (await fetch(`https://itunes.apple.com/lookup?entity=album&country=AR&upc=${encodeURIComponent(info.upc)}`)).json();
+        const hit = arr(j.results).find(x => x.collectionViewUrl);
+        if (hit) out.apple = hit.collectionViewUrl.replace(/\?.*$/, "");
+      }
+    } catch {}
+  }
+  if (!out.apple) {
+    try {
+      const r = await fetch("https://itunes.apple.com/search?entity=album&limit=10&country=AR&term=" + encodeURIComponent(a.artist + " " + a.title));
+      const j = await r.json();
+      const n = norm(a.title), hit = arr(j.results).find(x => norm(x.artistName) === norm(a.artist) && (norm(x.collectionName) === n || norm(x.collectionName).startsWith(n + " ")));
+      if (hit) out.apple = hit.collectionViewUrl.replace(/\?.*$/, "");
+    } catch {}
+  }
+  cset("ln:" + a.key, out);
+  return out;
+}
+document.addEventListener("click", async e => {
+  const l = e.target.closest("a[data-p]"); if (!l) return;
+  const el = l.closest("[data-k]"), a = el && (ALB.get(el.dataset.k) || S.fav[el.dataset.k] || S.heard[el.dataset.k]);
+  if (!a || cget("ln:" + a.key)) return; // ya resuelto: el href es directo
+  e.preventDefault();
+  const w = window.open("about:blank", "_blank"); // se abre ya, para que el navegador no lo bloquee
+  const links = await resolveLinks(a).catch(() => ({}));
+  const url = links[l.dataset.p] || fallbackUrl(l.dataset.p, a);
+  if (w) { w.opener = null; w.location.href = url; } else location.href = url;
+  document.querySelectorAll(`[data-k="${CSS.escape(a.key)}"] a[data-p]`).forEach(x => { x.href = links[x.dataset.p] || fallbackUrl(x.dataset.p, a); });
+});
 document.addEventListener("error", e => {
   const img = e.target;
   if (img.tagName !== "IMG" || !img.closest(".cover")) return;
@@ -574,9 +801,10 @@ document.addEventListener("error", e => {
 }, true);
 
 document.addEventListener("click", e => {
-  const b = e.target.closest(".acts button"); if (!b) return;
+  const b = e.target.closest(".rec [data-act]"); if (!b) return;
   const el = b.closest(".rec"), k = el.dataset.k;
   const a = ALB.get(k) || S.fav[k] || S.heard[k]; if (!a) return;
+  if (b.dataset.act === "open") { openAlbum(a, true); return; }
   if (b.dataset.act === "fav") {
     if (S.fav[k]) delete S.fav[k]; else S.fav[k] = a;
     save("w:fav", S.fav);
@@ -588,6 +816,93 @@ document.addEventListener("click", e => {
   counts();
 });
 function fadeOut(el) { el.classList.add("out"); setTimeout(() => el.remove(), 300); }
+
+// ---------- Ficha del disco y reproductor de previews ----------
+const P = { audio: new Audio(), list: [], i: 0, album: null };
+P.audio.preload = "none";
+const fmtT = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+async function openAlbum(a, autoplay) {
+  const sh = $("sheet");
+  sh.dataset.k = a.key;
+  const src = a.img || (a.rg ? `https://coverartarchive.org/release-group/${a.rg}/front-500` : "");
+  $("sh-head").innerHTML = `<div class="cover big" style="background:${coverBg(a.artist)}">${esc(ini(a.artist))}${src ? `<img alt="" src="${esc(src)}">` : ""}</div>
+    <div class="sh-info"><h2>${esc(a.title)}</h2><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}${a.comp ? " · compilado" : ""}</div>
+    <p class="why">${esc(a.why || "")}</p><div class="sh-links" id="sh-links"><span class="hint">Buscando el disco en cada plataforma…</span></div></div>`;
+  $("sh-tracks").innerHTML = a.dz ? `<p class="hint">Cargando canciones…</p>` : `<p class="hint">Este disco no está en Deezer, así que no hay previews. Podés escucharlo con los links de arriba.</p>`;
+  if (!sh.open) sh.showModal();
+  resolveLinks(a).then(links => {
+    if (sh.dataset.k !== a.key) return;
+    $("sh-links").innerHTML = PLATFORMS.filter(x => links[x.p] || x.p !== "bandcamp").map(x => `<a class="pl${links[x.p] ? "" : " q"}" href="${esc(links[x.p] || fallbackUrl(x.p, a))}" target="_blank" rel="noopener" title="${links[x.p] ? "Abre el disco" : "No encontré el link directo: abre la búsqueda"}">${x.n}${links[x.p] ? "" : " ⌕"}</a>`).join("");
+    document.querySelectorAll(`.rec[data-k="${CSS.escape(a.key)}"] a[data-p]`).forEach(x => { x.href = links[x.dataset.p] || fallbackUrl(x.dataset.p, a); });
+  });
+  if (!a.dz) return;
+  try {
+    const tracks = await getTracks(a.dz);
+    if (sh.dataset.k !== a.key) return;
+    renderTracks(a, tracks);
+    if (autoplay && P.album?.key !== a.key) { const i = tracks.findIndex(t => t.preview); if (i >= 0) play(a, tracks, i); }
+  } catch { $("sh-tracks").innerHTML = `<p class="hint">No pude cargar las canciones de Deezer. Probá de nuevo.</p>`; }
+}
+function renderTracks(a, tracks) {
+  const multi = new Set(tracks.map(t => t.disk)).size > 1;
+  $("sh-tracks").innerHTML = `<ol class="tracks">${tracks.map((t, i) => `<li><button type="button" data-ti="${i}" ${t.preview ? "" : "disabled"} class="${P.album?.key === a.key && P.i === i ? "on" : ""}" aria-label="Reproducir ${esc(t.title)}"><span class="tn">${multi ? t.disk + "." : ""}${t.n}</span><span class="tt">${esc(t.title)}</span><span class="td">${fmtT(t.dur)}</span></button></li>`).join("")}</ol>
+    <p class="hint">Previews de 30 segundos de Deezer.</p>`;
+}
+$("sh-tracks").addEventListener("click", e => {
+  const b = e.target.closest("[data-ti]"); if (!b) return;
+  const a = ALB.get($("sheet").dataset.k) || S.fav[$("sheet").dataset.k] || S.heard[$("sheet").dataset.k];
+  const i = +b.dataset.ti;
+  if (P.album?.key === a.key && P.i === i) { toggle(); return; }
+  play(a, dzTracks.get(a.dz), i);
+});
+$("sh-close").onclick = () => $("sheet").close();
+$("sheet").addEventListener("click", e => { if (e.target === $("sheet")) $("sheet").close(); });
+async function play(a, tracks, i, retried) {
+  P.album = a; P.list = tracks; P.i = i;
+  const t = tracks[i];
+  P.audio.src = t.preview;
+  try { await P.audio.play(); }
+  catch (err) {
+    if (err.name === "NotAllowedError") { updatePlayer(); return; }
+    if (!retried) { const fresh = await getTracks(a.dz, true).catch(() => null); if (fresh) return play(a, fresh, i, true); } // preview vencida
+  }
+  updatePlayer();
+}
+function toggle() { if (!P.album) return; P.audio.paused ? P.audio.play().catch(() => {}) : P.audio.pause(); }
+function step(d) {
+  if (!P.album) return;
+  let i = P.i + d;
+  while (i >= 0 && i < P.list.length && !P.list[i].preview) i += d;
+  if (i >= 0 && i < P.list.length) play(P.album, P.list, i); else { P.audio.pause(); updatePlayer(); }
+}
+function updatePlayer() {
+  const a = P.album; if (!a) return;
+  const t = P.list[P.i];
+  $("player").hidden = false; document.body.classList.add("has-player");
+  $("pl-cover").innerHTML = a.img ? `<img alt="" src="${esc(a.img)}">` : esc(ini(a.artist));
+  $("pl-cover").style.background = coverBg(a.artist);
+  $("pl-t").textContent = t?.title || ""; $("pl-a").textContent = `${a.artist} — ${a.title}`;
+  $("pl-play").textContent = P.audio.paused ? "▶" : "❚❚";
+  $("pl-play").setAttribute("aria-label", P.audio.paused ? "Reproducir" : "Pausar");
+  document.querySelectorAll("#sh-tracks [data-ti]").forEach(b => b.classList.toggle("on", $("sheet").dataset.k === a.key && +b.dataset.ti === P.i));
+}
+P.audio.addEventListener("ended", () => step(1));
+P.audio.addEventListener("play", updatePlayer);
+P.audio.addEventListener("pause", updatePlayer);
+P.audio.addEventListener("timeupdate", () => { $("pl-bar").style.width = (P.audio.duration ? P.audio.currentTime / P.audio.duration * 100 : 0) + "%"; });
+$("pl-play").onclick = toggle;
+$("pl-prev").onclick = () => step(-1);
+$("pl-next").onclick = () => step(1);
+$("pl-open").onclick = () => P.album && openAlbum(P.album, false);
+$("pl-close").onclick = () => { P.audio.pause(); P.album = null; $("player").hidden = true; document.body.classList.remove("has-player"); };
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
+  navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
+  P.audio.addEventListener("play", () => {
+    const a = P.album, t = P.list[P.i];
+    navigator.mediaSession.metadata = new MediaMetadata({ title: t?.title || "", artist: a.artist, album: a.title, artwork: a.img ? [{ src: a.img, sizes: "500x500" }] : [] });
+  });
+}
 
 // ---------- Vistas ----------
 S.view = "buscar";
@@ -774,7 +1089,7 @@ function renderDial() {
   $("lvl").value = l;
   $("needle").style.left = (12.5 + l * 25) + "%";
   $("lvl-name").textContent = LEVELS[l].n;
-  $("stations").innerHTML = LEVELS.map((x, i) => `<button type="button" data-l="${i}" class="${i === l ? "on" : ""}">${x.n}<small>${x.d} oyentes</small></button>`).join("");
+  $("stations").innerHTML = LEVELS.map((x, i) => `<button type="button" data-l="${i}" class="${i === l ? "on" : ""}">${x.n}<small>${x.d}</small></button>`).join("");
   $("band").querySelectorAll(".st").forEach(s => s.remove());
   LEVELS.forEach((_, i) => { const s = document.createElement("div"); s.className = "st"; s.style.left = (12.5 + i * 25) + "%"; $("band").prepend(s); });
 }
@@ -806,7 +1121,27 @@ $("more").onclick = async () => {
   finally { S.busy = false; $("more").disabled = false; }
 };
 
+// ---------- Tema claro / oscuro ----------
+const THEMES = [{ v: "auto", i: "◐", n: "Tema: automático (según el sistema)" }, { v: "light", i: "☀", n: "Tema: claro" }, { v: "dark", i: "☾", n: "Tema: oscuro" }];
+const darkMq = matchMedia("(prefers-color-scheme: dark)");
+function applyTheme() {
+  const t = load("w:theme", "auto"), th = THEMES.find(x => x.v === t) || THEMES[0];
+  if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  $("theme").textContent = th.i; $("theme").title = th.n; $("theme").setAttribute("aria-label", th.n + ". Tocá para cambiar");
+  const dark = t === "dark" || (t === "auto" && darkMq.matches);
+  $("tc").content = dark ? "#0f1117" : "#f7f8fb";
+}
+$("theme").onclick = () => { const t = load("w:theme", "auto"), i = THEMES.findIndex(x => x.v === t); save("w:theme", THEMES[(i + 1) % 3].v); applyTheme(); };
+darkMq.addEventListener("change", applyTheme);
+
+// ---------- Instalar como app (Chrome en Android y PC) ----------
+let installEvt = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("install").hidden = false; });
+$("install").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $("install").hidden = true; };
+addEventListener("appinstalled", () => { $("install").hidden = true; });
+
 // ---------- Inicio ----------
+applyTheme();
 renderDecs(); renderDial(); counts(); updateHint(); showNoKey(false); adn(); loadChart();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
