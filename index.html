@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wacho.mp3</title>
+<meta name="description" content="Recomendador de discos por banda, género, década y qué tan under lo querés.">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Wacho.mp3">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="wacho-192.png">
+<link rel="apple-touch-icon" href="wacho-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: dirección "Dial". Cabecera con logo y pestañas; buscador armado como frase
+   (Discos como… / en clave… / de los…); ADN sonoro debajo de las bandas; dial de radio
+   que se traba en 4 estaciones (Masivo → Under); grilla de discos. Claro por defecto, oscuro según el sistema. */
+:root{
+  --bg:#f7f8fb; --card:#ffffff; --ink:#10131a; --mut:#6a7180; --line:#dfe3ea;
+  --cobalt:#2340d8; --soft:#e8ecfb; --needle:#e2412b; --ok:#1f8a5b;
+  --display:"Syne","Arial Black",system-ui,sans-serif;
+  --body:"Inter","Segoe UI",system-ui,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1117; --card:#161a23; --ink:#e9ecf3; --mut:#8f97a8; --line:#262b36;
+  --cobalt:#8096ff; --soft:#1c2340; --needle:#ff6a50; --ok:#4cc38a; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--bg)}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--cobalt)}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Cabecera */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:800;font-size:1.35rem;letter-spacing:-.02em;background:none;border:0;padding:0}
+.logo i{font-style:normal;color:var(--cobalt)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;padding:6px 10px;border-radius:999px;color:var(--mut);font-size:.9rem}
+nav button.on{background:var(--soft);color:var(--cobalt);font-weight:600}
+nav .n{font-variant-numeric:tabular-nums;opacity:.75;margin-left:3px}
+.gear{background:none;border:1px solid var(--line);border-radius:999px;width:34px;height:34px;display:grid;place-items:center;color:var(--mut)}
+
+main{padding-block:28px 64px;display:grid;gap:28px}
+
+/* Aviso de key */
+.notice{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px 18px;display:grid;gap:10px}
+.notice h2{margin:0;font-size:1rem}
+.notice p{margin:0;color:var(--mut);max-width:70ch}
+.keyrow{display:flex;gap:8px;flex-wrap:wrap}
+.keyrow input{flex:1 1 240px;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 12px;font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
+
+/* Buscador como frase */
+.ask{display:grid;gap:14px}
+.line{display:grid;grid-template-columns:minmax(150px,auto) 1fr;align-items:center;gap:8px 18px}
+.line>label,.line>.lab{font-family:var(--display);font-weight:700;font-size:clamp(1.4rem,3.4vw,2.4rem);letter-spacing:-.025em;line-height:1.1;white-space:nowrap}
+.field{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:52px;border-bottom:2px solid var(--line);padding:6px 0;min-width:0}
+.field:focus-within{border-color:var(--cobalt)}
+.field input{flex:1 1 160px;min-width:0;border:0;background:transparent;font-family:var(--display);font-weight:600;font-size:clamp(1.1rem,2.4vw,1.6rem);padding:4px 2px;outline:none;color:var(--cobalt)}
+.field input::placeholder{color:var(--mut);opacity:.6}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--cobalt);border:0;border-radius:999px;padding:5px 8px 5px 12px;font-weight:600;font-size:.95rem}
+.chip b{font-weight:400;opacity:.7;font-size:1.05rem;line-height:1}
+.ac{position:absolute;left:0;right:0;top:100%;z-index:20;margin:4px 0 0;padding:4px;list-style:none;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 16px 32px -16px rgba(0,0,0,.35);max-height:300px;overflow:auto}
+.ac li{padding:8px 10px;border-radius:6px;display:flex;justify-content:space-between;gap:12px;cursor:pointer}
+.ac li small{color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ac li.hi{background:var(--soft);color:var(--cobalt)}
+.decs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0}
+.dec{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mut)}
+.dec.on{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+.approx{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:.88rem;margin-left:8px}
+
+/* ADN sonoro */
+.adn{grid-column:2;border:1px dashed var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.adn-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.adn-h strong{font-family:var(--display);font-size:1rem}
+.adn-h span{font-size:.8rem;color:var(--mut)}
+.adn-tags{display:flex;flex-wrap:wrap;gap:6px}
+.adn-tag{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.88rem;display:inline-flex;gap:6px;align-items:center}
+.adn-tag:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.adn-tag .bar{width:28px;height:4px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+.adn-tag .bar i{position:absolute;inset:0 auto 0 0;background:var(--cobalt)}
+.adn-tag.used{opacity:.45}
+.adn-tag.dt{border-style:dashed}
+
+/* Dial */
+.dial{display:grid;gap:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0}
+.dial-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.dial-top span{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.dial-top strong{font-family:var(--display);font-size:1.15rem;color:var(--cobalt)}
+.band{position:relative;height:50px;border-radius:4px;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 10px)}
+.band::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,var(--mut) 0 1px,transparent 1px 50px);opacity:.45;-webkit-mask:linear-gradient(#000 0 40%,transparent 40%);mask:linear-gradient(#000 0 40%,transparent 40%)}
+.band .st{position:absolute;top:0;bottom:0;width:2px;background:var(--mut);opacity:.6}
+.needle{position:absolute;top:-5px;bottom:-5px;width:3px;margin-left:-1.5px;background:var(--needle);border-radius:2px;transition:left .22s cubic-bezier(.3,1.4,.5,1)}
+.band input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:ew-resize}
+.stations{display:grid;grid-template-columns:repeat(4,1fr);text-align:center}
+.stations button{background:none;border:0;padding:4px 2px;color:var(--mut);font-size:.85rem;display:grid;gap:1px}
+.stations button small{font-size:.7rem;opacity:.8;font-variant-numeric:tabular-nums}
+.stations button.on{color:var(--cobalt);font-weight:600}
+.go{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--cobalt);color:#fff;border:0;border-radius:999px;padding:12px 24px;font-weight:600;font-size:1rem}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent;color:var(--cobalt);border:1px solid var(--line)}
+.hint{color:var(--mut);font-size:.88rem}
+
+/* Resultados */
+.status{color:var(--mut);font-size:.92rem;display:flex;gap:10px;align-items:center;min-height:1.5em}
+.status.err{color:var(--needle)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--cobalt);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sec-h h2{margin:0;font-family:var(--display);font-size:1.5rem;letter-spacing:-.02em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:26px 20px}
+.rec{display:grid;gap:9px;align-content:start;min-width:0;transition:opacity .3s,transform .3s}
+.rec.out{opacity:0;transform:scale(.96)}
+.cover{position:relative;aspect-ratio:1;max-width:100%;border-radius:6px;overflow:hidden;background:var(--c);display:flex;align-items:flex-end;padding:10px;color:#fff;font-family:var(--display);font-weight:800;font-size:1.5rem;box-shadow:0 12px 24px -16px rgba(16,19,26,.6)}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rec h3{margin:0;font-size:1rem;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.by{font-size:.88rem;color:var(--mut)}
+.why{margin:0;font-size:.83rem;line-height:1.45}
+.meta{display:flex;gap:6px;flex-wrap:wrap}
+.meta span{font-size:.72rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--mut);font-variant-numeric:tabular-nums}
+.meta .lv{border-color:transparent;background:var(--soft);color:var(--cobalt);font-weight:600}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.acts button{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:.8rem}
+.acts button.on{background:var(--needle);border-color:var(--needle);color:#fff}
+.links{display:flex;gap:12px;font-size:.8rem}
+.links a{color:var(--mut);text-decoration:none;border-bottom:1px solid var(--line)}
+.links a:hover{color:var(--cobalt);border-color:var(--cobalt)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:28px;color:var(--mut);text-align:center}
+
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:22px;max-width:min(520px,calc(100vw - 32px));width:100%}
+dialog::backdrop{background:rgba(10,12,18,.45)}
+dialog h2{margin:0 0 8px;font-family:var(--display)}
+dialog .row{display:grid;gap:8px;margin-top:14px}
+dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
+.foot{color:var(--mut);font-size:.78rem;border-top:1px solid var(--line);padding-top:16px}
+
+@media (max-width:720px){
+  .line{grid-template-columns:1fr;gap:2px}
+  .adn{grid-column:1}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 14px}
+  .cover{font-size:1.2rem}
+  .stations button{font-size:.78rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:0s!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar">wacho<i>.mp3</i></button>
+  <nav>
+    <button data-view="buscar" class="on">Buscar</button>
+    <button data-view="guardados">Guardados<span class="n" id="n-fav"></span></button>
+    <button data-view="escuchados">Escuchados<span class="n" id="n-heard"></span></button>
+  </nav>
+  <button class="gear" id="open-set" aria-label="Configuración" title="Configuración">⚙</button>
+</div></header>
+
+<main class="wrap">
+  <section class="notice" id="nokey" hidden>
+    <h2>Falta conectar Last.fm</h2>
+    <p>Wacho.mp3 saca las recomendaciones de Last.fm. Pedí una API key gratis en <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener">last.fm/api/account/create</a> y pegala acá. Queda guardada solo en este dispositivo.</p>
+    <div class="keyrow"><input id="key-quick" placeholder="API key de Last.fm" autocomplete="off" spellcheck="false"><button class="btn" id="key-quick-save">Conectar</button></div>
+  </section>
+
+  <section id="v-buscar" class="ask" aria-label="Buscar discos">
+    <div class="line">
+      <label for="in-bands">Discos como</label>
+      <div class="field" id="f-bands"><input id="in-bands" placeholder="una o varias bandas…" autocomplete="off" spellcheck="false"><ul class="ac" hidden></ul></div>
+      <div class="adn" id="adn" hidden>
+        <div class="adn-h"><strong id="adn-title">ADN sonoro</strong><span id="adn-sub">Tocá un rasgo para sumarlo al género</span></div>
+        <div class="adn-tags" id="adn-tags"></div>
+      </div>
+    </div>
+    <div class="line">
+      <label for="in-tags">en clave</label>
+      <div class="field" id="f-tags"><input id="in-tags" placeholder="género, estilo o sonido…" autocomplete="off" spellcheck="false"><ul class="ac" hidden></ul></div>
+    </div>
+    <div class="line">
+      <span class="lab">de los</span>
+      <div class="decs" id="decs"></div>
+    </div>
+
+    <div class="dial">
+      <div class="dial-top"><span>Sintonía · de mainstream a under</span><strong id="lvl-name"></strong></div>
+      <div class="band" id="band">
+        <div class="needle" id="needle"></div>
+        <input type="range" id="lvl" min="0" max="3" step="1" value="2" aria-label="Qué tan conocido">
+      </div>
+      <div class="stations" id="stations"></div>
+    </div>
+
+    <div class="go">
+      <button class="btn" id="go">Buscar discos</button>
+      <span class="hint" id="go-hint"></span>
+    </div>
+
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="grid" id="res"></div>
+    <div class="go" id="more-row" hidden><button class="btn ghost" id="more">Mostrar más</button></div>
+  </section>
+
+  <section id="v-guardados" hidden>
+    <div class="sec-h"><h2>Guardados</h2><span class="hint">Discos que querés escuchar. Quedan en este dispositivo.</span></div>
+    <div class="grid" id="fav-grid" style="margin-top:18px"></div>
+  </section>
+
+  <section id="v-escuchados" hidden>
+    <div class="sec-h"><h2>Escuchados</h2><span class="hint">No vuelven a aparecer en las búsquedas. Desmarcalos si querés que vuelvan.</span></div>
+    <div class="grid" id="heard-grid" style="margin-top:18px"></div>
+  </section>
+
+  <p class="foot">Datos de <a href="https://www.last.fm" target="_blank" rel="noopener">Last.fm</a> y <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a>, tapas de <a href="https://coverartarchive.org" target="_blank" rel="noopener">Cover Art Archive</a>. Qué tan conocido es un artista se mide por sus oyentes en Last.fm.</p>
+</main>
+
+<dialog id="set">
+  <h2>Configuración</h2>
+  <div class="row">
+    <label for="key">API key de Last.fm</label>
+    <div class="keyrow"><input id="key" autocomplete="off" spellcheck="false"></div>
+    <p>Pedila gratis en <a href="https://www.last.fm/api/account/create" target="_blank" rel="noopener">last.fm/api/account/create</a>. Se guarda solo en este dispositivo.</p>
+  </div>
+  <div class="row">
+    <p>Borrar la caché de búsquedas libera espacio y fuerza datos nuevos. No toca tus guardados ni escuchados.</p>
+    <div class="keyrow"><button class="btn ghost" id="clear-cache">Borrar caché</button></div>
+  </div>
+  <div class="go" style="margin-top:18px;justify-content:flex-end"><button class="btn ghost" id="set-close">Cancelar</button><button class="btn" id="set-save">Guardar</button></div>
+</dialog>
+
+<script>
+"use strict";
+// ---------- Config ----------
+const LASTFM_DEFAULT = ""; // key pública de la app; cada dispositivo puede usar la suya desde Configuración
+const LEVELS = [
+  { n: "Masivo",   min: 1500000, d: "+1,5 M" },
+  { n: "Conocido", min: 400000,  d: "400 k–1,5 M" },
+  { n: "De culto", min: 80000,   d: "80–400 k" },
+  { n: "Under",    min: 0,       d: "−80 k" },
+];
+const DECADES = [1950,1960,1970,1980,1990,2000,2010,2020];
+const JUNK = new Set(["seen live","favorites","favourites","favorite","favourite","love","awesome","beautiful","amazing","my favorite","albums i own","favorite artists","favourite artists","best","good","cool","all","under 2000 listeners","spotify","fip","check out","female","male","uk","usa","american","british","english","canadian","australian","german","french","japanese","swedish","icelandic","irish","scottish","norwegian","argentina","argentine","brazil","mexico","spain","new york","london","manchester","bristol","glasgow","sheffield","chicago","seattle","los angeles","montreal","berlin","tokyo","10s","00s","90s","80s","70s","60s","50s","2010s","2000s","1990s","1980s","1970s","1960s","1950s"]);
+const GENRES = ["rock","indie","indie rock","indie pop","alternative","alternative rock","post-rock","post-punk","punk","punk rock","hardcore","post-hardcore","emo","midwest emo","math rock","noise rock","noise pop","noise","shoegaze","dream pop","slowcore","sadcore","space rock","psychedelic","psychedelic rock","neo-psychedelia","krautrock","progressive rock","art rock","glam rock","garage rock","garage punk","surf","stoner rock","desert rock","grunge","britpop","madchester","baggy","jangle pop","c86","twee","power pop","new wave","cold wave","darkwave","synth-pop","synthwave","gothic rock","deathrock","industrial","ebm","electronic","electronica","idm","ambient","dark ambient","drone","downtempo","trip-hop","chillout","house","deep house","techno","minimal techno","acid house","uk garage","2-step","dubstep","drum and bass","jungle","breakbeat","big beat","glitch","vaporwave","hypnagogic pop","chillwave","lo-fi","bedroom pop","experimental","avant-garde","free jazz","jazz","jazz fusion","spiritual jazz","soul jazz","bossa nova","mpb","tropicalia","samba","latin","cumbia","rock nacional","rock argentino","rock en espanol","tango","folk","folk rock","freak folk","psych folk","indie folk","anti-folk","americana","alt-country","country","bluegrass","singer-songwriter","chamber pop","baroque pop","sunshine pop","soft rock","yacht rock","pop","art pop","dance-pop","electropop","hyperpop","r&b","contemporary r&b","neo-soul","soul","northern soul","funk","p-funk","disco","italo disco","boogie","hip-hop","hip hop","rap","underground hip-hop","boom bap","trap","abstract hip-hop","jazz rap","conscious hip-hop","grime","reggae","dub","ska","rocksteady","dancehall","afrobeat","highlife","world","metal","heavy metal","doom metal","sludge","stoner metal","black metal","atmospheric black metal","post-metal","death metal","thrash metal","progressive metal","nu metal","metalcore","screamo","blues","blues rock","delta blues","rockabilly","rock and roll","classic rock","hard rock","southern rock","instrumental","soundtrack","modern classical","neoclassical","contemporary classical","minimalism","post-minimalism","chamber music","lounge","exotica","easy listening","city pop","shibuya-kei","j-rock","k-indie","new age","gospel","dream folk","ethereal","atmospheric","melancholic","mellow","chill","dark","lo-fi indie","sophisti-pop","post-britpop","acid jazz","nu jazz","electro","coldwave","minimal wave","no wave","art punk","dance-punk","post-punk revival","indietronica","folktronica","dub techno","microhouse","footwork","witch house","sludge metal","blackgaze","nu gaze","grungegaze","emo revival","jazz-rock","canterbury scene","zeuhl","library music","bossa"];
+
+// ---------- Utilidades ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const arr = x => x ? (Array.isArray(x) ? x : [x]) : [];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/\(.*?\)|\[.*?\]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+const tagNorm = s => norm(s).replace(/ /g, "");
+const fmtN = n => n >= 1e6 ? (n / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " k" : String(n);
+const levelOf = l => LEVELS.findIndex(x => l >= x.min);
+const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
+const coverBg = s => `linear-gradient(135deg,hsl(${hue(s)} 42% 42%),hsl(${(hue(s) + 40) % 360} 38% 20%))`;
+const ini = s => s.replace(/^the /i, "").split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase();
+const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+// ---------- Estado ----------
+const S = {
+  bands: load("w:bands", []), tags: load("w:tags", []), decades: load("w:decades", [1990]),
+  approx: load("w:approx", false), level: load("w:level", 2),
+  fav: load("w:fav", {}), heard: load("w:heard", {}),
+  adn: [], queue: [], shown: new Set(), ctx: null, busy: false,
+};
+const albumKey = (artist, title) => norm(artist) + "|" + norm(title);
+const getKey = () => (load("w:key", "") || LASTFM_DEFAULT).trim();
+
+// ---------- Caché ----------
+const mem = new Map();
+const TTL = 7 * 864e5;
+function cget(k) {
+  if (mem.has(k)) return mem.get(k);
+  try { const v = JSON.parse(localStorage.getItem("wc:" + k)); if (v && Date.now() - v.t < TTL) { mem.set(k, v.d); return v.d; } } catch {}
+}
+function cset(k, d) {
+  mem.set(k, d);
+  try { localStorage.setItem("wc:" + k, JSON.stringify({ t: Date.now(), d })); }
+  catch { clearCache(); }
+}
+function clearCache() { try { Object.keys(localStorage).filter(k => k.startsWith("wc:")).forEach(k => localStorage.removeItem(k)); } catch {} mem.clear(); }
+async function cached(k, f) { const c = cget(k); if (c !== undefined) return c; const d = await f(); if (d !== undefined) cset(k, d); return d; }
+
+// ---------- Colas (Last.fm en paralelo, MusicBrainz de a 1 por segundo) ----------
+function limiter(n) {
+  let active = 0; const q = [];
+  const next = () => { if (active >= n || !q.length) return; active++; const { f, res, rej } = q.shift(); f().then(res, rej).finally(() => { active--; next(); }); };
+  return f => new Promise((res, rej) => { q.push({ f, res, rej }); next(); });
+}
+const lfmQ = limiter(5);
+let mbChain = Promise.resolve(), mbLast = 0;
+function mbQ(f) {
+  const p = mbChain.then(async () => { const w = mbLast + 1100 - Date.now(); if (w > 0) await sleep(w); try { return await f(); } finally { mbLast = Date.now(); } });
+  mbChain = p.catch(() => {});
+  return p;
+}
+
+// ---------- Last.fm ----------
+class KeyError extends Error {}
+async function lfm(params) {
+  const key = getKey();
+  if (!key) throw new KeyError("Falta la API key de Last.fm.");
+  const u = "https://ws.audioscrobbler.com/2.0/?" + new URLSearchParams({ ...params, api_key: key, format: "json" });
+  const r = await lfmQ(() => fetch(u));
+  let j; try { j = await r.json(); } catch { throw new Error("Last.fm no respondió bien. Probá de nuevo en un rato."); }
+  if (j.error) {
+    if (j.error === 10 || j.error === 26) throw new KeyError("Last.fm rechazó la API key. Revisala en Configuración.");
+    if (j.error === 6) return null; // no existe
+    if (j.error === 29) { await sleep(1500); return lfm(params); }
+    throw new Error("Last.fm: " + j.message);
+  }
+  return j;
+}
+const lf = {
+  search: q => cached("s:" + norm(q), async () => {
+    const j = await lfm({ method: "artist.search", artist: q, limit: 8 });
+    return arr(j?.results?.artistmatches?.artist).map(a => ({ name: a.name, listeners: +a.listeners || 0 }));
+  }),
+  similar: (name, limit) => cached(`sim:${limit}:${norm(name)}`, async () => {
+    const j = await lfm({ method: "artist.getsimilar", artist: name, limit, autocorrect: 1 });
+    return arr(j?.similarartists?.artist).map(a => ({ name: a.name, mbid: a.mbid || "", match: +a.match || 0 }));
+  }),
+  topTags: name => cached("tt:" + norm(name), async () => {
+    const j = await lfm({ method: "artist.gettoptags", artist: name, autocorrect: 1 });
+    return arr(j?.toptags?.tag).slice(0, 40).map(t => ({ name: t.name.toLowerCase().trim(), count: +t.count || 0 }));
+  }),
+  info: name => cached("in:" + norm(name), async () => {
+    const j = await lfm({ method: "artist.getinfo", artist: name, autocorrect: 1 });
+    const a = j?.artist; if (!a) return null;
+    return { name: a.name, mbid: a.mbid || "", listeners: +a.stats?.listeners || 0, tags: arr(a.tags?.tag).map(t => t.name.toLowerCase()) };
+  }),
+  tagArtists: (tag, page) => cached(`ta:${page}:${norm(tag)}`, async () => {
+    const j = await lfm({ method: "tag.gettopartists", tag, limit: 100, page });
+    return arr(j?.topartists?.artist).map(a => ({ name: a.name, mbid: a.mbid || "" }));
+  }),
+  topAlbums: name => cached("ta2:" + norm(name), async () => {
+    const j = await lfm({ method: "artist.gettopalbums", artist: name, limit: 40, autocorrect: 1 });
+    return arr(j?.topalbums?.album).map(a => ({ name: a.name, img: (arr(a.image).find(i => i.size === "extralarge") || {})["#text"] || "" }));
+  }),
+  chartTags: () => cached("chart", async () => {
+    const j = await lfm({ method: "chart.gettoptags", limit: 250 });
+    return arr(j?.tags?.tag).map(t => t.name.toLowerCase());
+  }),
+};
+
+// ---------- MusicBrainz ----------
+const BAD_TYPES = 'NOT secondarytype:(compilation OR live OR remix OR soundtrack OR "dj-mix" OR demo OR interview OR spokenword OR "mixtape/street")';
+function decadeRanges() {
+  if (!S.decades.length) return "";
+  const pad = S.approx ? 2 : 0;
+  const r = [...S.decades].sort().map(d => `firstreleasedate:[${d - pad} TO ${d + 9 + pad}-12-31]`);
+  return ` AND (${r.join(" OR ")})`;
+}
+async function mbAlbums(artists) {
+  const terms = artists.flatMap(a => {
+    const t = [`artistname:"${a.name.replace(/["\\]/g, "")}"`];
+    if (a.mbid) t.push(`arid:${a.mbid}`);
+    return t;
+  });
+  const q = `(${terms.join(" OR ")}) AND primarytype:album AND ${BAD_TYPES}${decadeRanges()}`;
+  return cached("mb:" + q, () => mbQ(async () => {
+    const r = await fetch("https://musicbrainz.org/ws/2/release-group/?fmt=json&limit=100&query=" + encodeURIComponent(q));
+    if (!r.ok) throw new Error("MusicBrainz no respondió (" + r.status + "). Probá de nuevo en unos segundos.");
+    const j = await r.json();
+    return arr(j["release-groups"]).map(g => ({
+      id: g.id, title: g.title, date: g["first-release-date"] || "",
+      arid: g["artist-credit"]?.[0]?.artist?.id || "", aname: g["artist-credit"]?.[0]?.name || "",
+    }));
+  }));
+}
+
+// ---------- Búsqueda ----------
+function setStatus(msg, kind) {
+  const el = $("status");
+  el.className = "status" + (kind === "err" ? " err" : "");
+  el.innerHTML = msg ? (kind === "busy" ? '<span class="spin"></span>' : "") + `<span>${msg}</span>` : "";
+}
+const tagMatches = (artistTags, wanted) => {
+  const at = artistTags.map(tagNorm);
+  return wanted.some(w => { const n = tagNorm(w); return at.some(t => t === n || (n.length > 3 && (t.includes(n) || n.includes(t)))); });
+};
+
+async function buildPool() {
+  const { bands, tags, level } = S;
+  const pool = new Map();
+  const refs = new Set(bands.map(norm));
+  const add = (a, score, via, tag) => {
+    const k = norm(a.name); if (!k || refs.has(k)) return;
+    let p = pool.get(k);
+    if (!p) { p = { name: a.name, mbid: a.mbid || "", score: 0, via: new Set(), inTag: new Set() }; pool.set(k, p); }
+    p.score += score; if (via) p.via.add(via); if (tag) p.inTag.add(tag);
+    if (!p.mbid && a.mbid) p.mbid = a.mbid;
+  };
+  if (bands.length) {
+    setStatus("Buscando bandas parecidas…", "busy");
+    const sims = await Promise.all(bands.map(b => lf.similar(b, 100)));
+    sims.forEach((list, i) => list.forEach(a => add(a, a.match, bands[i])));
+    if (level >= 2) {
+      // segundo salto: parecidos de los parecidos, para llegar a lo menos conocido
+      const parents = [...pool.values()].sort((a, b) => b.score - a.score).slice(0, level === 3 ? 12 : 8);
+      const hops = await Promise.all(parents.map(p => lf.similar(p.name, 50).catch(() => [])));
+      hops.forEach((list, i) => list.forEach(a => add(a, a.match * 0.45 * Math.min(1, parents[i].score), [...parents[i].via][0])));
+    }
+  }
+  if (tags.length) {
+    setStatus("Buscando artistas del género…", "busy");
+    const pages = [[1], [1, 2], [3, 4, 5], [5, 7, 9, 11]][level];
+    const jobs = tags.flatMap(t => pages.map(p => lf.tagArtists(t, p).then(list => ({ t, list })).catch(() => ({ t, list: [] }))));
+    for (const { t, list } of await Promise.all(jobs)) list.forEach((a, i) => add(a, (bands.length ? 0.15 : 1) * (1 - i / 200), null, t));
+  }
+  let list = [...pool.values()];
+  // si hay bandas y géneros, primero los que aparecen en ambos lados
+  list.sort((a, b) => (b.inTag.size && b.via.size ? 1 : 0) - (a.inTag.size && a.via.size ? 1 : 0) || b.score - a.score);
+  if (!bands.length) list = shuffleSoft(list);
+  return list;
+}
+function shuffleSoft(list) { // mezcla un poco para que cada búsqueda por género no devuelva siempre lo mismo
+  return list.map((x, i) => ({ x, k: i + Math.random() * 60 })).sort((a, b) => a.k - b.k).map(o => o.x);
+}
+
+// Pasa candidatos por artist.getInfo y se queda con los del nivel y género pedidos.
+async function qualify(ctx, want) {
+  const out = [];
+  while (out.length < want && ctx.cursor < ctx.pool.length && ctx.rounds < 5) {
+    const chunk = ctx.pool.slice(ctx.cursor, ctx.cursor + 30); ctx.cursor += 30; ctx.rounds++;
+    setStatus(`Midiendo qué tan conocidas son ${ctx.cursor} bandas…`, "busy");
+    const infos = await Promise.all(chunk.map(c => lf.info(c.name).catch(e => { if (e instanceof KeyError) throw e; return null; })));
+    infos.forEach((inf, i) => {
+      if (!inf) return;
+      const c = chunk[i];
+      c.listeners = inf.listeners; c.tags = inf.tags; c.mbid = c.mbid || inf.mbid; c.name = inf.name;
+      c.lvl = levelOf(inf.listeners);
+      const okTag = !S.tags.length || c.inTag.size > 0 || tagMatches(inf.tags, S.tags);
+      if (!okTag) return;
+      if (c.lvl === S.level) out.push(c);
+      else if (Math.abs(c.lvl - S.level) === 1) ctx.near.push(c);
+    });
+  }
+  return out;
+}
+
+function whyText(a) {
+  const parts = [];
+  if (a.via?.size) parts.push("Parecido a " + [...a.via].slice(0, 2).join(" y "));
+  const pool = [...S.tags, ...S.adn.slice(0, 8).map(t => t.name)];
+  const shared = (a.tags || []).filter(t => tagMatches([t], pool)).slice(0, 3);
+  if (shared.length) parts.push((parts.length ? "comparte " : "Comparte ") + shared.join(", "));
+  else if (a.tags?.length) parts.push((parts.length ? "suena a " : "Suena a ") + a.tags.slice(0, 2).join(", "));
+  return parts.join(" · ") || "En la frecuencia que buscaste";
+}
+
+// Busca discos (de la década elegida) para una tanda de artistas.
+async function albumsFor(artists) {
+  const found = [];
+  for (let i = 0; i < artists.length; i += 6) {
+    const batch = artists.slice(i, i + 6);
+    setStatus("Buscando discos en MusicBrainz…", "busy");
+    const rgs = await mbAlbums(batch);
+    await Promise.all(batch.map(async a => {
+      const k = norm(a.name);
+      const mine = rgs.filter(g => (a.mbid && g.arid === a.mbid) || norm(g.aname) === k);
+      const seen = new Set(); const uniq = mine.filter(g => { const t = norm(g.title); if (seen.has(t)) return false; seen.add(t); return true; });
+      if (!uniq.length) return;
+      const tops = await lf.topAlbums(a.name).catch(() => []);
+      const rank = new Map(tops.map((t, i) => [norm(t.name), i]));
+      const img = new Map(tops.map(t => [norm(t.name), t.img]));
+      uniq.sort((x, y) => (rank.get(norm(x.title)) ?? 999) - (rank.get(norm(y.title)) ?? 999) || x.date.localeCompare(y.date));
+      const pick = uniq.find(g => !S.heard[albumKey(a.name, g.title)] && !S.shown.has(albumKey(a.name, g.title)));
+      if (!pick) return;
+      found.push({
+        key: albumKey(a.name, pick.title), title: pick.title, artist: a.name, year: pick.date.slice(0, 4),
+        rg: pick.id, img: img.get(norm(pick.title)) || "", listeners: a.listeners, lvl: a.lvl,
+        tags: (a.tags || []).slice(0, 3), why: whyText(a), near: a.near || false,
+      });
+    }));
+  }
+  return found;
+}
+
+async function search() {
+  if (S.busy) return;
+  if (!S.bands.length && !S.tags.length) { setStatus("Poné al menos una banda o un género.", "err"); return; }
+  if (!getKey()) { showNoKey(true); setStatus("Primero conectá Last.fm (arriba).", "err"); return; }
+  S.busy = true; $("go").disabled = true; $("more-row").hidden = true;
+  $("res").innerHTML = ""; S.shown = new Set();
+  try {
+    const pool = await buildPool();
+    S.ctx = { pool, cursor: 0, rounds: 0, near: [], usedNear: false };
+    S.queue = [];
+    await fillMore(true);
+  } catch (e) { handleErr(e); }
+  finally { S.busy = false; $("go").disabled = false; }
+}
+
+async function fillMore(first) {
+  const ctx = S.ctx; if (!ctx) return;
+  let cards = [];
+  for (let guard = 0; cards.length < 12 && guard < 4; guard++) {
+    if (S.queue.length < 8) S.queue.push(...await qualify(ctx, 18));
+    if (!S.queue.length && !ctx.usedNear && ctx.near.length) { // no alcanza: sumar vecinos del nivel de al lado
+      ctx.usedNear = true; ctx.near.forEach(n => n.near = true); S.queue.push(...ctx.near.sort((a, b) => b.score - a.score));
+    }
+    if (!S.queue.length) break;
+    const batch = S.queue.splice(0, 12);
+    cards.push(...await albumsFor(batch));
+  }
+  cards.forEach(c => S.shown.add(c.key));
+  const grid = $("res");
+  if (cards.length) grid.insertAdjacentHTML("beforeend", cards.map(card).join(""));
+  cards.forEach(c => ALB.set(c.key, c));
+  const total = grid.children.length;
+  const more = S.queue.length || ctx.cursor < ctx.pool.length || (!ctx.usedNear && ctx.near.length);
+  $("more-row").hidden = !more;
+  if (!total) setStatus(emptyMsg(), "err");
+  else setStatus(`${total} discos · ${LEVELS[S.level].n.toLowerCase()}${S.decades.length ? " · " + decLabel() : ""}${cards.some(c => c.near) ? " · algunos del nivel de al lado, marcados como “cerca”" : ""}`);
+}
+function emptyMsg() {
+  const tips = [];
+  if (S.decades.length) tips.push("activá “aproximado” o sumá otra década");
+  if (S.tags.length && S.bands.length) tips.push("sacá un género");
+  tips.push("mové el dial a otra estación");
+  return "No encontré discos con esa combinación. Probá: " + tips.join(", ") + ".";
+}
+const decLabel = () => [...S.decades].sort().map(d => "’" + String(d).slice(2)).join(", ") + (S.approx ? " (aprox.)" : "");
+function handleErr(e) {
+  console.error(e);
+  if (e instanceof KeyError) { showNoKey(true); setStatus(e.message, "err"); }
+  else setStatus(e.message || "Algo falló. Probá de nuevo.", "err");
+}
+
+// ---------- Tarjetas ----------
+const ALB = new Map();
+function card(a) {
+  const q = encodeURIComponent(a.artist + " " + a.title);
+  const fav = !!S.fav[a.key], heard = !!S.heard[a.key];
+  const caa = a.rg ? `https://coverartarchive.org/release-group/${a.rg}/front-250` : "";
+  const src = caa || a.img;
+  return `<article class="rec" data-k="${esc(a.key)}">
+    <div class="cover" style="background:${coverBg(a.artist)}">${esc(ini(a.artist))}${src ? `<img loading="lazy" alt="" src="${esc(src)}"${caa && a.img ? ` data-alt="${esc(a.img)}"` : ""}>` : ""}</div>
+    <div><h3>${esc(a.title)}</h3><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}</div></div>
+    <p class="why">${esc(a.why)}</p>
+    <div class="meta"><span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.listeners ? `<span>${fmtN(a.listeners)} oyentes</span>` : ""}${a.tags.slice(0, 2).map(t => `<span>${esc(t)}</span>`).join("")}</div>
+    <div class="acts"><button data-act="fav" class="${fav ? "on" : ""}">${fav ? "♥ Guardado" : "♡ Guardar"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button></div>
+    <div class="links"><a href="https://open.spotify.com/search/${q}" target="_blank" rel="noopener">Spotify</a><a href="https://www.youtube.com/results?search_query=${q}+full+album" target="_blank" rel="noopener">YouTube</a><a href="https://bandcamp.com/search?q=${q}&item_type=a" target="_blank" rel="noopener">Bandcamp</a></div>
+  </article>`;
+}
+document.addEventListener("error", e => {
+  const img = e.target;
+  if (img.tagName !== "IMG" || !img.closest(".cover")) return;
+  if (img.dataset.alt) { img.src = img.dataset.alt; delete img.dataset.alt; } else img.remove();
+}, true);
+
+document.addEventListener("click", e => {
+  const b = e.target.closest(".acts button"); if (!b) return;
+  const el = b.closest(".rec"), k = el.dataset.k;
+  const a = ALB.get(k) || S.fav[k] || S.heard[k]; if (!a) return;
+  if (b.dataset.act === "fav") {
+    if (S.fav[k]) delete S.fav[k]; else S.fav[k] = a;
+    save("w:fav", S.fav);
+    if (S.view === "guardados" && !S.fav[k]) fadeOut(el); else el.outerHTML = card(a);
+  } else {
+    if (S.heard[k]) { delete S.heard[k]; save("w:heard", S.heard); if (S.view === "escuchados") fadeOut(el); else el.outerHTML = card(a); }
+    else { S.heard[k] = a; save("w:heard", S.heard); fadeOut(el); }
+  }
+  counts();
+});
+function fadeOut(el) { el.classList.add("out"); setTimeout(() => el.remove(), 300); }
+
+// ---------- Vistas ----------
+S.view = "buscar";
+function setView(v) {
+  S.view = v;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+  for (const n of ["buscar", "guardados", "escuchados"]) $("v-" + n).hidden = n !== v;
+  if (v === "guardados") renderList("fav-grid", S.fav, "Todavía no guardaste discos. Tocá “♡ Guardar” en cualquier recomendación.");
+  if (v === "escuchados") renderList("heard-grid", S.heard, "Nada marcado como escuchado todavía.");
+  window.scrollTo({ top: 0 });
+}
+function renderList(id, obj, empty) {
+  const list = Object.values(obj).reverse();
+  list.forEach(a => ALB.set(a.key, a));
+  $(id).innerHTML = list.length ? list.map(card).join("") : `<div class="empty" style="grid-column:1/-1">${empty}</div>`;
+}
+function counts() {
+  const f = Object.keys(S.fav).length, h = Object.keys(S.heard).length;
+  $("n-fav").textContent = f ? f : ""; $("n-heard").textContent = h ? h : "";
+}
+document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+
+// ---------- Campos con chips y autocompletado ----------
+function chipField(fieldId, key, suggest, onChange) {
+  const field = $(fieldId), input = field.querySelector("input"), ac = field.querySelector(".ac");
+  let items = [], hi = -1, timer, seq = 0;
+  const render = () => {
+    field.querySelectorAll(".chip").forEach(c => c.remove());
+    S[key].forEach((v, i) => {
+      const c = document.createElement("button"); c.type = "button"; c.className = "chip";
+      c.innerHTML = `${esc(v)} <b aria-hidden="true">×</b>`; c.setAttribute("aria-label", "Quitar " + v);
+      c.onclick = () => { S[key].splice(i, 1); commit(); input.focus(); };
+      field.insertBefore(c, input);
+    });
+  };
+  const commit = () => { save("w:" + key, S[key]); render(); onChange && onChange(); };
+  const addVal = v => {
+    v = v.trim(); if (!v) return;
+    if (!S[key].some(x => norm(x) === norm(v))) S[key].push(v);
+    input.value = ""; close(); commit();
+  };
+  const close = () => { ac.hidden = true; items = []; hi = -1; };
+  const show = () => {
+    if (!items.length) return close();
+    ac.innerHTML = items.map((it, i) => `<li data-i="${i}" class="${i === hi ? "hi" : ""}">${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ""}</li>`).join("");
+    ac.hidden = false;
+  };
+  input.addEventListener("input", () => {
+    clearTimeout(timer); const q = input.value.trim(); const my = ++seq;
+    if (q.length < 2) return close();
+    timer = setTimeout(async () => {
+      try { const r = await suggest(q); if (my !== seq) return; items = r.filter(x => !S[key].some(v => norm(v) === norm(x.label))); hi = items.length ? 0 : -1; show(); }
+      catch (e) { if (e instanceof KeyError) showNoKey(true); }
+    }, 220);
+  });
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown" && items.length) { hi = (hi + 1) % items.length; show(); e.preventDefault(); }
+    else if (e.key === "ArrowUp" && items.length) { hi = (hi - 1 + items.length) % items.length; show(); e.preventDefault(); }
+    else if (e.key === "Enter") { e.preventDefault(); if (!ac.hidden && hi >= 0) addVal(items[hi].label); else if (input.value.trim()) addVal(input.value); else search(); }
+    else if (e.key === "," || e.key === "Tab" && input.value.trim()) { if (input.value.trim()) { e.preventDefault(); addVal(!ac.hidden && hi >= 0 ? items[hi].label : input.value); } }
+    else if (e.key === "Backspace" && !input.value && S[key].length) { S[key].pop(); commit(); }
+    else if (e.key === "Escape") close();
+  });
+  ac.addEventListener("mousedown", e => { const li = e.target.closest("li"); if (li) { e.preventDefault(); addVal(items[+li.dataset.i].label); } });
+  input.addEventListener("blur", () => setTimeout(close, 120));
+  field.addEventListener("click", e => { if (e.target === field) input.focus(); });
+  render();
+  return { add: addVal, render };
+}
+
+let chartTags = [];
+function tagSuggest(q) {
+  const n = tagNorm(q);
+  const all = [...new Set([...S.adn.map(t => t.name), ...GENRES, ...chartTags])];
+  const starts = [], has = [];
+  for (const t of all) { const k = tagNorm(t); if (k.startsWith(n)) starts.push(t); else if (k.includes(n)) has.push(t); }
+  const res = [...starts.sort((a, b) => a.length - b.length), ...has].slice(0, 8).map(t => ({ label: t }));
+  if (!res.some(r => tagNorm(r.label) === n)) res.push({ label: q.trim().toLowerCase(), sub: "usar tal cual" });
+  return Promise.resolve(res);
+}
+async function bandSuggest(q) {
+  const r = await lf.search(q);
+  return r.map(a => ({ label: a.name, sub: a.listeners ? fmtN(a.listeners) + " oyentes" : "" }));
+}
+const bandsField = chipField("f-bands", "bands", bandSuggest, () => { updateHint(); adn(); });
+const tagsField = chipField("f-tags", "tags", tagSuggest, () => { updateHint(); markAdn(); });
+
+// ---------- ADN sonoro ----------
+let adnSeq = 0;
+async function adn() {
+  const my = ++adnSeq, bands = [...S.bands];
+  if (!bands.length) { S.adn = []; $("adn").hidden = true; return; }
+  if (!getKey()) return;
+  $("adn").hidden = false;
+  $("adn-title").textContent = bands.length > 1 ? "ADN sonoro en común" : "ADN sonoro de " + bands[0];
+  $("adn-sub").textContent = "Analizando…";
+  $("adn-tags").innerHTML = "";
+  try {
+    const lists = await Promise.all(bands.map(b => lf.topTags(b).catch(() => [])));
+    if (my !== adnSeq) return;
+    const m = new Map(), decs = new Map();
+    lists.forEach(list => {
+      const seen = new Set();
+      list.forEach(t => {
+        const dm = t.name.match(/^(?:19)?([5-9]0|[0-2]0)'?s$/) || t.name.match(/^(19[5-9]0|20[0-2]0)s$/);
+        if (dm && t.count >= 10) { let d = dm[1]; d = d.length === 4 ? +d : (+d >= 50 ? 1900 + +d : 2000 + +d); decs.set(d, (decs.get(d) || 0) + t.count); }
+        if (JUNK.has(t.name) || t.count < 5 || t.name.length > 28) return;
+        const k = tagNorm(t.name); if (seen.has(k)) return; seen.add(k);
+        const e = m.get(k) || { name: t.name, n: 0, sum: 0 }; e.n++; e.sum += t.count; m.set(k, e);
+      });
+    });
+    const N = bands.length;
+    let tags = [...m.values()].map(e => ({ ...e, share: e.n / N, score: (e.sum / N) * (e.n / N) ** 1.5 }));
+    if (N > 1) tags = tags.filter(t => t.n >= 2);
+    tags.sort((a, b) => b.score - a.score);
+    S.adn = tags.slice(0, 16);
+    const decList = [...decs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([d]) => d).filter(d => DECADES.includes(d));
+    if (!S.adn.length) { $("adn-sub").textContent = N > 1 ? "Estas bandas no comparten etiquetas fuertes. Probá con otra combinación." : "Last.fm no tiene etiquetas para esta banda."; return; }
+    $("adn-sub").textContent = N > 1 ? `Lo que comparten ${N} bandas · tocá para sumarlo al género` : "Tocá un rasgo para sumarlo al género";
+    const max = S.adn[0].score;
+    $("adn-tags").innerHTML = S.adn.map((t, i) => `<button type="button" class="adn-tag" data-t="${esc(t.name)}" title="${N > 1 ? `En ${t.n} de ${N} bandas` : `Peso ${t.sum}`}">${esc(t.name)}<span class="bar"><i style="width:${Math.max(12, t.score / max * 100)}%"></i></span></button>`).join("")
+      + decList.map(d => `<button type="button" class="adn-tag dt" data-d="${d}" title="Década fuerte en estas bandas">década ’${String(d).slice(2)}</button>`).join("");
+    markAdn();
+  } catch (e) { if (my === adnSeq) { $("adn-sub").textContent = e.message; if (e instanceof KeyError) showNoKey(true); } }
+}
+function markAdn() {
+  $("adn-tags").querySelectorAll(".adn-tag").forEach(b => {
+    if (b.dataset.t) b.classList.toggle("used", S.tags.some(t => tagNorm(t) === tagNorm(b.dataset.t)));
+    if (b.dataset.d) b.classList.toggle("used", S.decades.includes(+b.dataset.d));
+  });
+}
+$("adn-tags").addEventListener("click", e => {
+  const b = e.target.closest(".adn-tag"); if (!b) return;
+  if (b.dataset.t) {
+    const i = S.tags.findIndex(t => tagNorm(t) === tagNorm(b.dataset.t));
+    if (i >= 0) S.tags.splice(i, 1); else S.tags.push(b.dataset.t);
+    save("w:tags", S.tags); tagsField.render(); updateHint();
+  } else { toggleDec(+b.dataset.d); }
+  markAdn();
+});
+
+// ---------- Décadas ----------
+function renderDecs() {
+  $("decs").innerHTML = DECADES.map(d => `<button type="button" class="dec${S.decades.includes(d) ? " on" : ""}" data-d="${d}" aria-pressed="${S.decades.includes(d)}">’${String(d).slice(2)}</button>`).join("")
+    + `<label class="approx"><input type="checkbox" id="approx"${S.approx ? " checked" : ""}> aproximado (±2 años)</label>`
+    + `<span class="hint">${S.decades.length ? "" : "cualquier época"}</span>`;
+  $("approx").onchange = e => { S.approx = e.target.checked; save("w:approx", S.approx); };
+}
+function toggleDec(d) {
+  const i = S.decades.indexOf(d); if (i >= 0) S.decades.splice(i, 1); else S.decades.push(d);
+  save("w:decades", S.decades); renderDecs(); markAdn(); updateHint();
+}
+$("decs").addEventListener("click", e => { const b = e.target.closest(".dec"); if (b) toggleDec(+b.dataset.d); });
+
+// ---------- Dial ----------
+function renderDial() {
+  const l = S.level;
+  $("lvl").value = l;
+  $("needle").style.left = (12.5 + l * 25) + "%";
+  $("lvl-name").textContent = LEVELS[l].n;
+  $("stations").innerHTML = LEVELS.map((x, i) => `<button type="button" data-l="${i}" class="${i === l ? "on" : ""}">${x.n}<small>${x.d} oyentes</small></button>`).join("");
+  $("band").querySelectorAll(".st").forEach(s => s.remove());
+  LEVELS.forEach((_, i) => { const s = document.createElement("div"); s.className = "st"; s.style.left = (12.5 + i * 25) + "%"; $("band").prepend(s); });
+}
+function setLevel(l) { if (l === S.level) return; S.level = l; save("w:level", l); renderDial(); }
+$("lvl").addEventListener("input", e => setLevel(+e.target.value));
+$("stations").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setLevel(+b.dataset.l); });
+
+function updateHint() {
+  const h = [];
+  if (!S.bands.length && !S.tags.length) h.push("Sumá una banda o un género para empezar.");
+  else if (S.bands.length > 1 && !S.tags.length) h.push("Tip: sumá un rasgo del ADN sonoro para afinar.");
+  $("go-hint").textContent = h.join(" ");
+}
+
+// ---------- Configuración / key ----------
+function showNoKey(force) { $("nokey").hidden = !!getKey() && !force; }
+function setKey(v) { save("w:key", v.trim()); clearCache(); showNoKey(false); adn(); loadChart(); }
+$("key-quick-save").onclick = () => { const v = $("key-quick").value.trim(); if (v) { setKey(v); $("key-quick").value = ""; } };
+$("open-set").onclick = () => { $("key").value = load("w:key", ""); $("key").placeholder = LASTFM_DEFAULT ? "usando la key de la app" : "pegá tu key"; $("set").showModal(); };
+$("set-close").onclick = () => $("set").close();
+$("set-save").onclick = () => { setKey($("key").value); $("set").close(); };
+$("clear-cache").onclick = () => { clearCache(); $("clear-cache").textContent = "Caché borrada"; };
+async function loadChart() { if (getKey()) chartTags = await lf.chartTags().catch(() => []) || []; }
+
+$("go").onclick = search;
+$("more").onclick = async () => {
+  if (S.busy) return; S.busy = true; $("more").disabled = true;
+  try { await fillMore(false); } catch (e) { handleErr(e); }
+  finally { S.busy = false; $("more").disabled = false; }
+};
+
+// ---------- Inicio ----------
+renderDecs(); renderDial(); counts(); updateHint(); showNoKey(false); adn(); loadChart();
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body></html>
