@@ -1,6 +1,7 @@
 # Wacho.mp3
 
 Recomendador de discos: elegís una o varias bandas de referencia, géneros y décadas, y movés el dial de **Masivo** a **Under**.
+La pestaña **Explorar** arma un picadito de los discos clave de cualquier banda (por dónde empezar, clásicos, para seguir).
 El **ADN sonoro** muestra qué tienen en común las bandas que cargaste (y las bandas puente entre ellas) y te deja sumar esos rasgos al género.
 Cada disco trae previews de 30 s de sus canciones y links directos al álbum en Spotify, YouTube Music, Deezer, Apple Music y Bandcamp cuando existen.
 Solo recomienda álbumes y compilados (nada de singles ni EPs). Guardados, Escuchados e Historial (los discos que abriste en una plataforma) se pueden sincronizar entre tu PC y tu teléfono con un código.

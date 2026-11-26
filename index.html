@@ -52,6 +52,10 @@ a{color:var(--cobalt)}
 .logo{font-family:var(--display);font-weight:800;font-size:1.35rem;letter-spacing:-.02em;background:none;border:0;padding:0}
 .logo{display:flex;align-items:center;gap:10px}
 .logo .mark{width:42px;height:42px;flex:none;display:block}
+.logo .mark-d{display:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo .mark-l{display:none}:root:not([data-theme="light"]) .logo .mark-d{display:block}}
+:root[data-theme="dark"] .logo .mark-l{display:none}
+:root[data-theme="dark"] .logo .mark-d{display:block}
 .logo i{font-style:normal;color:var(--cobalt)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:none;border:0;padding:6px 10px;border-radius:999px;color:var(--mut);font-size:.9rem}
@@ -88,8 +92,17 @@ button.cover{border:0;cursor:pointer;width:100%;text-align:left}
 .likebig .hrt.on{color:var(--needle)}
 .likebig:has(.hrt.on){border-color:var(--needle);color:var(--needle)}
 .pl-ctl .like.on{color:var(--needle)}
+.bdg{background:var(--needle)!important;color:#fff!important;border-color:transparent!important;font-weight:700}
+.exp-head{display:grid;grid-template-columns:150px 1fr;gap:22px;align-items:center}
+.exp-pic{position:relative;width:150px;height:150px;border-radius:50%;overflow:hidden;display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:800;font-size:2.2rem}
+.exp-pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.exp-info{display:grid;gap:10px;min-width:0}
+.exp-info h2{margin:0;font-family:var(--display);font-size:clamp(1.6rem,4vw,2.6rem);letter-spacing:-.025em;line-height:1.05}
+.exp-sims{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.exp-sims>span{font-size:.8rem;color:var(--mut);margin-right:4px}
 .when{margin:0;font-size:.83rem;color:var(--cobalt);font-weight:500}
 .sec-h .clr{margin-left:auto}
+.clr.armed,.btn.armed{color:#fff;background:var(--needle);border-color:var(--needle)}
 .pl{background:var(--soft);color:var(--cobalt);text-decoration:none;border-radius:999px;padding:7px 13px;font-size:.85rem;font-weight:600}
 .pl.q{background:transparent;border:1px solid var(--line);color:var(--mut);font-weight:500}
 .tracks{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:2px}
@@ -218,6 +231,8 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
 
 @media (max-width:720px){
   .sh-head{grid-template-columns:1fr}
+  .exp-head{grid-template-columns:96px 1fr;gap:14px}
+  .exp-pic{width:96px;height:96px;font-size:1.5rem}
   .cover.big{max-width:240px}
   #sheet{padding:18px;max-width:calc(100vw - 16px)}
   .pl-ctl #pl-prev{display:none}
@@ -234,9 +249,10 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar"><img class="mark" src="logo-96.png" alt="" width="42" height="42"><span>wacho<i>.mp3</i></span></button>
+  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar"><img class="mark mark-l" src="logo-96.png" alt="" width="42" height="42"><img class="mark mark-d" src="logo-96-dark.png" alt="" width="42" height="42"><span>wacho<i>.mp3</i></span></button>
   <nav>
     <button data-view="buscar" class="on">Buscar</button>
+    <button data-view="explorar">Explorar</button>
     <button data-view="guardados">Guardados<span class="n" id="n-fav"></span></button>
     <button data-view="escuchados">Escuchados<span class="n" id="n-heard"></span></button>
     <button data-view="historial">Historial<span class="n" id="n-hist"></span></button>
@@ -297,6 +313,17 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <div class="go" id="more-row" hidden><button class="btn ghost" id="more">Mostrar más</button></div>
   </section>
 
+  <section id="v-explorar" class="ask" hidden aria-label="Explorar una banda">
+    <div class="line">
+      <label for="in-exp">Explorá a</label>
+      <div class="field" id="f-exp"><input id="in-exp" placeholder="una banda o artista…" autocomplete="off" spellcheck="false"><ul class="ac" hidden></ul></div>
+      <button type="button" class="clr" id="clr-exp" hidden>Limpiar</button>
+    </div>
+    <div id="exp-head"></div>
+    <div class="status" id="exp-status" aria-live="polite"></div>
+    <div id="exp-res"></div>
+  </section>
+
   <section id="v-guardados" hidden>
     <div class="sec-h"><h2>Guardados</h2><span class="hint">Discos que querés escuchar. Quedan en este dispositivo.</span></div>
     <div class="grid" id="fav-grid" style="margin-top:18px"></div>
@@ -354,6 +381,10 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <p>Borrar la caché de búsquedas libera espacio y fuerza datos nuevos. No toca tus guardados ni escuchados.</p>
     <div class="keyrow"><button class="btn ghost" id="clear-cache">Borrar caché</button></div>
   </div>
+  <div class="row">
+    <p>Borrar el historial quita la lista de discos que abriste en las plataformas (en todos los dispositivos vinculados). No toca Guardados ni Escuchados.</p>
+    <div class="keyrow"><button class="btn ghost" id="clear-hist2">Borrar historial</button></div>
+  </div>
   <div class="go" style="margin-top:18px;justify-content:flex-end"><button class="btn ghost" id="set-close">Cancelar</button><button class="btn" id="set-save">Guardar</button></div>
 </dialog>
 
@@ -394,7 +425,7 @@ const S = {
   bands: load("w:bands", []), tags: load("w:tags", []), decades: load("w:decades", [1990]),
   approx: load("w:approx", false), level: load("w:level", 2),
   fav: load("w:fav", {}), heard: load("w:heard", {}), hist: load("w:hist", {}),
-  adn: [], queue: [], shown: new Set(), ctx: null, busy: false,
+  adn: [], queue: [], shown: new Set(), ctx: null, busy: false, exp: load("w:exp", []),
 };
 const albumKey = (artist, title) => norm(artist) + "|" + norm(title);
 const getKey = () => (load("w:key", "") || LASTFM_DEFAULT).trim();
@@ -546,11 +577,11 @@ async function dzGet(path) { // Deezer permite ~50 consultas cada 5 s
   }
 }
 const dz = {
-  artist: name => cached("dza:" + norm(name), async () => {
+  artist: name => cached("dza2:" + norm(name), async () => {
     const j = await dzGet("search/artist?limit=8&q=" + encodeURIComponent(name));
     const k = norm(name), hits = arr(j?.data).filter(a => norm(a.name) === k);
     const best = hits.sort((a, b) => b.nb_fan - a.nb_fan)[0];
-    return best ? { id: best.id, fans: +best.nb_fan || 0 } : { id: 0, fans: 0 };
+    return best ? { id: best.id, fans: +best.nb_fan || 0, pic: best.picture_big || "" } : { id: 0, fans: 0, pic: "" };
   }),
   albums: id => cached("dzl:" + id, async () => {
     const j = await dzGet(`artist/${id}/albums?limit=150`);
@@ -780,8 +811,8 @@ function card(a, opts = {}) {
     <button class="cover" data-act="open" style="background:${coverBg(a.artist)}" aria-label="Escuchar ${esc(a.title)}">${esc(ini(a.artist))}${src ? `<img loading="lazy" alt="" src="${esc(src)}"${alt ? ` data-alt="${esc(alt)}"` : ""}>` : ""}${a.dz ? `<span class="play" aria-hidden="true">▶</span>` : ""}</button>
     <div><h3>${esc(a.title)}</h3><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}</div></div>
     ${opts.hist && a.at ? `<p class="when">Abierto en ${esc(PNAME[a.via] || a.via)} · ${fmtWhen(a.at)}</p>` : `<p class="why">${esc(a.why)}</p>`}
-    <div class="meta"><span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.comp ? "<span>compilado</span>" : ""}${pops ? `<span>${pops}</span>` : ""}</div>
-    <div class="acts"><button data-act="open" class="listen">${a.dz ? "▶ Escuchar" : "Ver disco"}</button><button data-act="fav" class="${fav ? "on" : ""}" aria-label="${fav ? "Quitar de guardados" : "Guardar"}">${fav ? "♥" : "♡"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button></div>
+    <div class="meta">${a.badge ? `<span class="bdg">${esc(a.badge)}</span>` : ""}<span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.comp ? "<span>compilado</span>" : ""}${pops ? `<span>${pops}</span>` : ""}</div>
+    <div class="acts"><button data-act="open" class="listen">${a.dz ? "▶ Escuchar" : "Ver disco"}</button><button data-act="fav" class="${fav ? "on" : ""}" aria-label="${fav ? "Quitar de guardados" : "Guardar"}">${fav ? "♥" : "♡"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button>${opts.hist ? `<button data-act="unhist" title="Quitar del historial">Quitar</button>` : ""}</div>
     <div class="links">${PLATFORMS.filter(x => x.p !== "bandcamp" || known.bandcamp).map(x => `<a href="${esc(known[x.p] || fallbackUrl(x.p, a))}" data-p="${x.p}" target="_blank" rel="noopener">${x.n.replace(" Music", "")}</a>`).join("")}</div>
   </article>`;
 }
@@ -855,7 +886,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("error", e => {
   const img = e.target;
-  if (img.tagName !== "IMG" || !img.closest(".cover")) return;
+  if (img.tagName !== "IMG" || !img.closest(".cover,.exp-pic")) return;
   if (img.dataset.alt) { img.src = img.dataset.alt; delete img.dataset.alt; } else img.remove();
 }, true);
 
@@ -865,6 +896,7 @@ document.addEventListener("click", e => {
   const a = findAlbum(k); if (!a) return;
   if (b.dataset.act === "open") { openAlbum(a, true); return; }
   if (b.dataset.act === "fav") { toggleFav(a); return; }
+  if (b.dataset.act === "unhist") { delete S.hist[k]; save("w:hist", S.hist); counts(); pushSync(); fadeOut(el); $("clr-hist").hidden = !Object.keys(S.hist).length; return; }
   if (S.heard[k]) { delete S.heard[k]; save("w:heard", S.heard); if (S.view === "escuchados") fadeOut(el); else el.outerHTML = card(a, cardOpts(el)); }
   else { S.heard[k] = a; save("w:heard", S.heard); if (S.view === "historial") el.outerHTML = card(a, cardOpts(el)); else fadeOut(el); }
   counts();
@@ -899,9 +931,10 @@ async function openAlbum(a, autoplay) {
   $("sh-head").innerHTML = `<div class="cover big" style="background:${coverBg(a.artist)}">${esc(ini(a.artist))}${src ? `<img alt="" src="${esc(src)}">` : ""}</div>
     <div class="sh-info"><h2>${esc(a.title)}</h2><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}${a.comp ? " · compilado" : ""}</div>
     <p class="why">${esc(a.why || "")}</p>
-    <div><button type="button" class="likebig" id="sh-like-b"><span class="hrt" id="sh-like">♡</span><span id="sh-like-txt">Me gusta</span></button></div>
+    <div class="go" style="gap:8px"><button type="button" class="likebig" id="sh-like-b"><span class="hrt" id="sh-like">♡</span><span id="sh-like-txt">Me gusta</span></button><button type="button" class="likebig" id="sh-exp">Explorar a ${esc(a.artist)}</button></div>
     <div class="sh-links" id="sh-links"><span class="hint">Buscando el disco en cada plataforma…</span></div></div>`;
   $("sh-like-b").onclick = () => toggleFav(a);
+  $("sh-exp").onclick = () => exploreArtist(a.artist);
   likeButtons();
   $("sh-tracks").innerHTML = a.dz ? `<p class="hint">Cargando canciones…</p>` : `<p class="hint">Este disco no está en Deezer, así que no hay previews. Podés escucharlo con los links de arriba.</p>`;
   if (!sh.open) sh.showModal();
@@ -986,9 +1019,10 @@ S.view = "buscar";
 function setView(v) {
   S.view = v;
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
-  for (const n of ["buscar", "guardados", "escuchados", "historial"]) $("v-" + n).hidden = n !== v;
+  for (const n of ["buscar", "explorar", "guardados", "escuchados", "historial"]) $("v-" + n).hidden = n !== v;
   if (v === "guardados") renderList("fav-grid", S.fav, "Todavía no guardaste discos. Tocá “♡ Guardar” en cualquier recomendación.");
   if (v === "escuchados") renderList("heard-grid", S.heard, "Nada marcado como escuchado todavía.");
+  if (v === "explorar" && S.exp[0] && !$("exp-res").children.length) explore(S.exp[0]);
   if (v === "historial") renderList("hist-grid", S.hist, "Todavía no abriste ningún disco en una plataforma. Cuando toques Spotify, YouTube, Deezer o Apple en un disco, aparece acá.", { hist: true });
   $("clr-hist").hidden = !Object.keys(S.hist).length;
   window.scrollTo({ top: 0 });
@@ -1003,7 +1037,14 @@ function counts() {
   const f = Object.keys(S.fav).length, h = Object.keys(S.heard).length, hi = Object.keys(S.hist).length;
   $("n-fav").textContent = f ? f : ""; $("n-heard").textContent = h ? h : ""; $("n-hist").textContent = hi ? hi : "";
 }
-$("clr-hist").onclick = () => { S.hist = {}; save("w:hist", S.hist); counts(); pushSync(); setView("historial"); };
+function confirmClear(btn, label, done) { // primer toque pide confirmación; el segundo borra
+  if (btn.dataset.armed) { clearTimeout(+btn.dataset.armed); delete btn.dataset.armed; btn.textContent = label; btn.classList.remove("armed"); done(); return; }
+  btn.textContent = "¿Seguro? Tocá de nuevo"; btn.classList.add("armed");
+  btn.dataset.armed = setTimeout(() => { delete btn.dataset.armed; btn.textContent = label; btn.classList.remove("armed"); }, 4000);
+}
+function clearHist() { S.hist = {}; save("w:hist", S.hist); counts(); pushSync(); if (S.view === "historial") setView("historial"); }
+$("clr-hist").onclick = e => confirmClear(e.currentTarget, "Borrar historial", clearHist);
+$("clear-hist2").onclick = e => confirmClear(e.currentTarget, "Borrar historial", () => { clearHist(); e.currentTarget.textContent = "Historial borrado"; });
 document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
 
 // ---------- Campos con chips y autocompletado ----------
@@ -1101,6 +1142,87 @@ async function bandSuggest(q) {
     .map(x => ({ label: x.label, sub: x.fans ? fmtN(x.fans) + " fans" : x.listeners ? fmtN(x.listeners) + " oyentes" : "" }));
 }
 const bandsField = chipField("f-bands", "bands", bandSuggest, () => { updateHint(); adn(); });
+
+// ---------- Explorar: los discos clave de una banda ----------
+// Cruza la discografía de MusicBrainz (solo álbumes y compilados) con lo más escuchado en Last.fm.
+const expField = chipField("f-exp", "exp", bandSuggest, () => {
+  if (S.exp.length > 1) { S.exp.splice(0, S.exp.length - 1); save("w:exp", S.exp); expField.render(); }
+  explore(S.exp[0]);
+});
+let expSeq = 0;
+function expStatus(msg, kind) { const el = $("exp-status"); el.className = "status" + (kind === "err" ? " err" : ""); el.innerHTML = msg ? (kind === "busy" ? '<span class="spin"></span>' : "") + `<span>${msg}</span>` : ""; }
+async function mbArtistAlbums(a) {
+  const terms = [`artistname:"${a.name.replace(/["\\]/g, "")}"`]; if (a.mbid) terms.push(`arid:${a.mbid}`);
+  const q = `(${terms.join(" OR ")}) AND primarytype:album AND ${BAD_TYPES}`;
+  return cached("mbx:" + q, async () => parseRgs(await mbFetch("https://musicbrainz.org/ws/2/release-group/?fmt=json&limit=100&query=" + encodeURIComponent(q))));
+}
+const EXP_TAGS = [
+  { max: 0, t: "Empezá por acá", d: "el disco más escuchado: la mejor puerta de entrada" },
+  { max: 3, t: "Clásico", d: "de sus discos más escuchados" },
+  { max: 99, t: "Para seguir", d: "cuando ya conozcas los clásicos" },
+];
+async function explore(name) {
+  const my = ++expSeq;
+  $("exp-head").innerHTML = ""; $("exp-res").innerHTML = "";
+  if (!name) { expStatus(""); return; }
+  if (!getKey()) { showNoKey(true); expStatus("Primero conectá Last.fm (arriba).", "err"); return; }
+  expStatus("Buscando su discografía…", "busy");
+  try {
+    const [inf, d] = await Promise.all([lf.info(name), dz.artist(name).catch(() => ({ id: 0, fans: 0, pic: "" }))]);
+    if (my !== expSeq) return;
+    if (!inf && !d.id) { expStatus(`No encontré a “${esc(name)}”. Probá elegirlo de la lista mientras escribís.`, "err"); return; }
+    const art = { name: inf?.name || name, mbid: inf?.mbid || "", listeners: inf?.listeners || 0, fans: d.fans, dzId: d.id, tags: inf?.tags || [] };
+    art.lvl = levelOf(popOf(art.listeners, art.fans));
+    const sims = await lf.similar(art.name, 12).catch(() => []);
+    if (my !== expSeq) return;
+    const pops = [art.fans ? `${fmtN(art.fans)} fans en Deezer` : "", art.listeners ? `${fmtN(art.listeners)} oyentes en Last.fm` : ""].filter(Boolean).join(" · ");
+    $("exp-head").innerHTML = `<div class="exp-head">
+      <div class="exp-pic" style="background:${coverBg(art.name)}">${esc(ini(art.name))}${d.pic ? `<img alt="" src="${esc(d.pic)}">` : ""}</div>
+      <div class="exp-info"><h2>${esc(art.name)}</h2>
+        <div class="meta"><span class="lv">${esc(LEVELS[art.lvl].n)}</span>${pops ? `<span>${pops}</span>` : ""}${art.tags.slice(0, 3).map(t => `<span>${esc(t)}</span>`).join("")}</div>
+        <div class="go"><button class="btn ghost" id="exp-similar">Recomendame parecidos</button></div>
+        ${sims.length ? `<div class="exp-sims"><span>Parecidos para explorar:</span>${sims.slice(0, 8).map(s => `<button type="button" class="adn-tag br" data-x="${esc(s.name)}">${esc(s.name)}</button>`).join("")}</div>` : ""}
+      </div></div>`;
+    $("exp-similar").onclick = () => { S.bands.splice(0, S.bands.length, art.name); save("w:bands", S.bands); bandsField.render(); adn(); updateHint(); setView("buscar"); search(); };
+    expStatus("Cruzando su discografía con lo más escuchado…", "busy");
+    const [rgs, tops] = await Promise.all([mbArtistAlbums(art), lf.topAlbums(art.name).catch(() => [])]);
+    if (my !== expSeq) return;
+    let mine = art.mbid ? rgs.filter(g => g.arid === art.mbid) : [];
+    if (!mine.length) mine = rgs.filter(g => norm(g.aname) === norm(art.name));
+    const seen = new Map();
+    for (const g of mine.sort((x, y) => (x.date || "9999").localeCompare(y.date || "9999"))) { const t = norm(g.title); if (!seen.has(t)) seen.set(t, g); }
+    const tn = tops.map(t => norm(t.name));
+    const rankOf = g => { const n = norm(g.title); let i = tn.indexOf(n); if (i < 0) i = tn.findIndex(t => t.startsWith(n + " ") || n.startsWith(t + " ")); return i < 0 ? 999 : i; };
+    const all = [...seen.values()].map(g => ({ g, r: rankOf(g) }));
+    if (!all.length) { expStatus(`No encontré álbumes de ${esc(art.name)} en MusicBrainz.`, "err"); return; }
+    const studio = all.filter(x => !x.g.comp).sort((a, b) => a.r - b.r || a.g.date.localeCompare(b.g.date));
+    const picks = studio.slice(0, 8).filter((x, i) => i < 3 || x.r < 999);
+    const comp = all.filter(x => x.g.comp && x.r < 30).sort((a, b) => a.r - b.r)[0];
+    const rest = all.filter(x => !picks.includes(x) && x !== comp).sort((a, b) => a.g.date.localeCompare(b.g.date));
+    const make = async (x, label, why) => {
+      const m = await findDz(art, x.g.title).catch(() => null);
+      return { key: albumKey(art.name, x.g.title), title: x.g.title, artist: art.name, year: (x.g.date || "").slice(0, 4), rg: x.g.id, comp: x.g.comp,
+        img: m?.cover || "", dz: m?.id || 0, listeners: art.listeners, fans: art.fans, lvl: art.lvl, tags: art.tags.slice(0, 3), why, badge: label };
+    };
+    expStatus("Buscando tapas y previews…", "busy");
+    const chosen = await Promise.all(picks.map((x, i) => { const e = EXP_TAGS.find(t => i <= t.max); return make(x, e.t, `${e.t} · ${x.r < 999 ? `#${x.r + 1} más escuchado` : e.d}`); }));
+    if (comp) chosen.push(await make(comp, "Compilado para arrancar", "Compilado para arrancar · un repaso de sus temas más conocidos"));
+    if (my !== expSeq) return;
+    chosen.forEach(a => ALB.set(a.key, a));
+    $("exp-res").innerHTML = `<div class="sec-h"><h2>El picadito</h2><span class="hint">Por dónde entrarle a ${esc(art.name)}, de lo más escuchado a lo que conviene dejar para después.</span></div>
+      <div class="grid" id="exp-grid" style="margin-top:16px">${chosen.map(a => card(a)).join("")}</div>
+      ${rest.length ? `<div class="go" style="margin-top:22px"><button class="btn ghost" id="exp-more">Ver el resto de la discografía (${rest.length})</button></div><div class="grid" id="exp-rest" style="margin-top:16px"></div>` : ""}`;
+    expStatus(`${chosen.length} discos para empezar · ${all.length} álbumes en total`);
+    if (rest.length) $("exp-more").onclick = async e => {
+      e.currentTarget.disabled = true; e.currentTarget.textContent = "Cargando…";
+      const more = await Promise.all(rest.map(x => make(x, "", x.g.comp ? "Compilado" : "De su discografía")));
+      more.forEach(a => ALB.set(a.key, a));
+      $("exp-rest").innerHTML = more.map(a => card(a)).join(""); e.currentTarget.parentElement.remove();
+    };
+  } catch (e) { if (my === expSeq) { console.error(e); if (e instanceof KeyError) showNoKey(true); expStatus(e.message || "Algo falló. Probá de nuevo.", "err"); } }
+}
+$("exp-head").addEventListener("click", e => { const b = e.target.closest("[data-x]"); if (!b) return; S.exp.splice(0, S.exp.length, b.dataset.x); save("w:exp", S.exp); expField.render(); explore(b.dataset.x); window.scrollTo({ top: 0, behavior: "smooth" }); });
+function exploreArtist(name) { $("sheet").open && $("sheet").close(); S.exp.splice(0, S.exp.length, name); save("w:exp", S.exp); expField.render(); setView("explorar"); explore(name); }
 const tagsField = chipField("f-tags", "tags", tagSuggest, () => { updateHint(); markAdn(); });
 
 // ---------- ADN sonoro ----------

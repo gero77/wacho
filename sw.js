@@ -1,5 +1,5 @@
 // Subir VERSION en cada publicación.
-const VERSION = "wacho-8";
+const VERSION = "wacho-9";
 const SHELL = ["./", "./index.html"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
