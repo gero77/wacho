@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Wacho.mp3: silueta de frente, sin rasgos, con gorra y auriculares de casco sobre la gorra -->
+  <rect width="512" height="512" rx="112" fill="#2340d8"/>
+  <g id="fig">
+    <!-- hombros y cuello -->
+    <path d="M104 512 C104 430 168 392 256 392 C344 392 408 430 408 512 Z" fill="#fff"/>
+    <rect x="222" y="320" width="68" height="84" rx="10" fill="#fff"/>
+    <!-- cabeza -->
+    <ellipse cx="256" cy="262" rx="82" ry="100" fill="#fff"/>
+    <!-- gorra: copa con botón -->
+    <path d="M170 224 C170 150 210 116 256 116 C302 116 342 150 342 224 Z" fill="#fff" stroke="#2340d8" stroke-width="10" paint-order="stroke"/>
+    <circle cx="256" cy="114" r="11" fill="#fff" stroke="#2340d8" stroke-width="8" paint-order="stroke"/>
+    <!-- gorra: visera vista de frente, a la altura de la frente -->
+    <path d="M174 218 C218 210 294 210 338 218 C356 222 356 236 348 246 C322 268 190 268 164 246 C156 236 156 222 174 218 Z" fill="#fff" stroke="#2340d8" stroke-width="10" paint-order="stroke"/>
+    <!-- auriculares: vincha por encima de la gorra -->
+    <path d="M148 276 C136 148 188 82 256 82 C324 82 376 148 364 276" fill="none" stroke="#2340d8" stroke-width="44" stroke-linecap="round"/>
+    <path d="M148 276 C136 148 188 82 256 82 C324 82 376 148 364 276" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round"/>
+    <!-- copas -->
+    <rect x="120" y="244" width="56" height="92" rx="22" fill="#ff5a3c" stroke="#2340d8" stroke-width="10" paint-order="stroke"/>
+    <rect x="336" y="244" width="56" height="92" rx="22" fill="#ff5a3c" stroke="#2340d8" stroke-width="10" paint-order="stroke"/>
+  </g>
+</svg>

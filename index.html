@@ -11,6 +11,7 @@ try { var t = localStorage.getItem("w:theme"); if (t === '"light"' || t === '"da
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Wacho.mp3">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="wacho-192.png">
 <link rel="apple-touch-icon" href="wacho-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +51,8 @@ a{color:var(--cobalt)}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;flex-wrap:wrap}
 .logo{font-family:var(--display);font-weight:800;font-size:1.35rem;letter-spacing:-.02em;background:none;border:0;padding:0}
+.logo{display:flex;align-items:center;gap:10px}
+.logo .mark{width:34px;height:34px;flex:none;display:block}
 .logo i{font-style:normal;color:var(--cobalt)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:none;border:0;padding:6px 10px;border-radius:999px;color:var(--mut);font-size:.9rem}
@@ -57,6 +60,14 @@ nav button.on{background:var(--soft);color:var(--cobalt);font-weight:600}
 nav .n{font-variant-numeric:tabular-nums;opacity:.75;margin-left:3px}
 .gear{background:none;border:1px solid var(--line);border-radius:999px;width:38px;height:38px;display:grid;place-items:center;color:var(--mut);font-size:1rem}
 .tools{display:flex;gap:6px;align-items:center}
+.gear.sync{position:relative;font-size:1.05rem}
+.gear .dot{position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:transparent;border:2px solid var(--bg)}
+.gear .dot.on{background:var(--ok)}.gear .dot.err{background:var(--needle)}
+.code{font-family:ui-monospace,Consolas,monospace;font-size:2rem;letter-spacing:.18em;font-weight:700;color:var(--cobalt);background:var(--soft);border-radius:10px;padding:12px 16px;text-align:center;user-select:all}
+.codein{font-family:ui-monospace,Consolas,monospace;text-transform:uppercase;letter-spacing:.15em;font-size:1.1rem}
+.sync-msg{margin:10px 0 0;font-size:.88rem;color:var(--mut);min-height:1.2em}
+.sync-msg.ok{color:var(--ok)}.sync-msg.err{color:var(--needle)}
+.btn.danger{background:transparent;color:var(--needle);border:1px solid var(--needle)}
 .pillbtn{background:var(--cobalt);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:600;font-size:.85rem}
 
 /* Tapa como botón, con play */
@@ -217,7 +228,7 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar">wacho<i>.mp3</i></button>
+  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar"><img class="mark" src="logo.svg" alt="" width="34" height="34"><span>wacho<i>.mp3</i></span></button>
   <nav>
     <button data-view="buscar" class="on">Buscar</button>
     <button data-view="guardados">Guardados<span class="n" id="n-fav"></span></button>
@@ -226,6 +237,7 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
   <div class="tools">
     <button class="pillbtn" id="install" hidden>Instalar app</button>
     <button class="gear" id="theme" aria-label="Tema" title="Tema"></button>
+    <button class="gear sync" id="open-sync" aria-label="Vincular dispositivos" title="Vincular dispositivos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg><span class="dot" id="sync-dot"></span></button>
     <button class="gear" id="open-set" aria-label="Configuración" title="Configuración">⚙</button>
   </div>
 </div></header>
@@ -310,6 +322,13 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     </div>
   </div>
 </div>
+
+<dialog id="sync" aria-label="Vincular dispositivos">
+  <h2>Vincular dispositivos</h2>
+  <div id="sync-body"></div>
+  <p class="sync-msg" id="sync-msg" aria-live="polite"></p>
+  <div class="go" style="margin-top:14px;justify-content:flex-end"><button class="btn ghost" id="sync-close">Cerrar</button></div>
+</dialog>
 
 <dialog id="set">
   <h2>Configuración</h2>
@@ -823,6 +842,7 @@ document.addEventListener("click", e => {
     else { S.heard[k] = a; save("w:heard", S.heard); fadeOut(el); }
   }
   counts();
+  pushSync();
 });
 function fadeOut(el) { el.classList.add("out"); setTimeout(() => el.remove(), 300); }
 
@@ -1185,8 +1205,102 @@ addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = 
 $("install").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $("install").hidden = true; };
 addEventListener("appinstalled", () => { $("install").hidden = true; });
 
+// ---------- Vincular dispositivos (Firebase, mismo proyecto que Pepix) ----------
+// Un código de 8 letras identifica un documento con Guardados y Escuchados; cada dispositivo vinculado lo escucha en vivo.
+const FB = { apiKey: "AIzaSyCNxabJ_d3t_3rGE5axCx3ZSlDOUGep96s", authDomain: "road-to-doomsday-13e8e.firebaseapp.com",
+  projectId: "road-to-doomsday-13e8e", storageBucket: "road-to-doomsday-13e8e.firebasestorage.app",
+  messagingSenderId: "99468053480", appId: "1:99468053480:web:8738cdfb940f9667bef25d" };
+const SYNC_COLL = "wacho", ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+let db = null, unsub = null, pushTimer = null, lastPushed = "";
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function getDb() {
+  if (db) return db;
+  if (!window.firebase) {
+    await loadScript("https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js");
+    await loadScript("https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js");
+  }
+  if (!firebase.apps.length) firebase.initializeApp(FB);
+  return (db = firebase.firestore());
+}
+const syncCode = () => load("w:sync", "");
+function syncBadge(s) { $("sync-dot").className = "dot" + (s ? " " + s : ""); }
+function syncMsg(t, k) { $("sync-msg").textContent = t || ""; $("sync-msg").className = "sync-msg" + (k ? " " + k : ""); }
+const payload = () => JSON.stringify({ fav: S.fav, heard: S.heard });
+function pushSync() {
+  const code = syncCode(); if (!code) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    const p = payload(); if (p === lastPushed) return;
+    try { (await getDb()).collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, t: Date.now() }); lastPushed = p; syncBadge("on"); }
+    catch (e) { console.warn(e); syncBadge("err"); }
+  }, 400);
+}
+async function subscribe(code) {
+  if (unsub) { unsub(); unsub = null; }
+  if (!code) { syncBadge(""); return; }
+  try {
+    const d = await getDb();
+    unsub = d.collection(SYNC_COLL).doc(code).onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites) return;
+      if (!snap.exists) { syncBadge("err"); return; }
+      const r = snap.data();
+      S.fav = r.fav || {}; S.heard = r.heard || {};
+      lastPushed = payload();
+      save("w:fav", S.fav); save("w:heard", S.heard); counts();
+      if (S.view === "guardados" || S.view === "escuchados") setView(S.view);
+      syncBadge("on");
+    }, e => { console.warn(e); syncBadge("err"); });
+  } catch (e) { console.warn(e); syncBadge("err"); }
+}
+function newCode() { const a = new Uint32Array(8); crypto.getRandomValues(a); return [...a].map(n => ALPHA[n % ALPHA.length]).join(""); }
+function renderSync() {
+  const code = syncCode(), nF = Object.keys(S.fav).length, nH = Object.keys(S.heard).length;
+  $("sync-body").innerHTML = code ? `
+    <p class="hint">Este dispositivo está vinculado. En el otro, abrí Wacho.mp3, tocá el ícono de la cadena (arriba a la derecha) y escribí este código:</p>
+    <div class="code" id="sync-code">${esc(code)}</div>
+    <div class="go" style="margin-top:12px"><button class="btn ghost" data-s="copy">Copiar código</button><button class="btn danger" data-s="leave">Desvincular este dispositivo</button></div>`
+  : `<p class="hint">Vinculá tu PC y tu teléfono para tener los mismos Guardados y Escuchados en los dos. Lo que marques en uno aparece en el otro al instante.</p>
+    <div class="go" style="margin-top:10px"><button class="btn" data-s="create">Crear código</button><span class="hint">Usalo en el primer dispositivo (${nF} guardados, ${nH} escuchados).</span></div>
+    <div class="row" style="margin-top:18px"><label for="sync-in">¿Ya tenés un código?</label>
+      <div class="keyrow"><input class="codein" id="sync-in" maxlength="8" autocomplete="off" spellcheck="false" placeholder="XXXXXXXX"><button class="btn" data-s="join">Unirme</button></div>
+      <p>Al unirte se juntan las listas de los dos dispositivos.</p></div>`;
+}
+$("open-sync").onclick = () => { syncMsg(""); renderSync(); $("sync").showModal(); };
+$("sync-close").onclick = () => $("sync").close();
+$("sync-body").addEventListener("click", async e => {
+  const b = e.target.closest("[data-s]"); if (!b) return;
+  const act = b.dataset.s;
+  if (act === "copy") { try { await navigator.clipboard.writeText(syncCode()); syncMsg("Código copiado.", "ok"); } catch { syncMsg("Seleccioná el código y copialo a mano."); } return; }
+  if (act === "leave") { save("w:sync", ""); subscribe(""); renderSync(); syncMsg("Este dispositivo quedó desvinculado. Tus listas siguen acá.", "ok"); return; }
+  b.disabled = true;
+  try {
+    const d = await getDb();
+    if (act === "create") {
+      const code = newCode();
+      await d.collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, t: Date.now() });
+      save("w:sync", code); lastPushed = payload(); subscribe(code); renderSync();
+      syncMsg("Listo. Escribí este código en el otro dispositivo.", "ok");
+    } else {
+      const code = ($("sync-in").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (code.length !== 8) { syncMsg("El código tiene 8 caracteres.", "err"); b.disabled = false; return; }
+      const snap = await d.collection(SYNC_COLL).doc(code).get();
+      if (!snap.exists) { syncMsg("No existe ese código. Revisalo.", "err"); b.disabled = false; return; }
+      const r = snap.data();
+      S.fav = { ...(r.fav || {}), ...S.fav }; S.heard = { ...(r.heard || {}), ...S.heard }; // se juntan las dos listas
+      save("w:fav", S.fav); save("w:heard", S.heard); counts();
+      await d.collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, t: Date.now() });
+      save("w:sync", code); lastPushed = payload(); subscribe(code); renderSync();
+      syncMsg("Vinculado. Las listas ya están juntas en los dos dispositivos.", "ok");
+    }
+  } catch (err) {
+    console.warn(err); b.disabled = false;
+    syncMsg(/permission/i.test(err?.message || "") ? "El servidor rechazó la conexión (permisos de Firebase)." : "No pude conectar. Revisá la conexión a internet.", "err");
+  }
+});
+
 // ---------- Inicio ----------
 applyTheme();
+if (syncCode()) subscribe(syncCode());
 renderDecs(); renderDial(); counts(); updateHint(); showNoKey(false); adn(); loadChart();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
