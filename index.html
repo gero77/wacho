@@ -110,7 +110,10 @@ main{padding-block:28px 64px;display:grid;gap:28px}
 
 /* Buscador como frase */
 .ask{display:grid;gap:30px}
-.line{display:grid;grid-template-columns:minmax(150px,auto) 1fr;align-items:center;gap:8px 18px}
+.line{display:grid;grid-template-columns:minmax(150px,auto) 1fr auto;align-items:center;gap:8px 18px;position:relative}
+.clr{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.82rem;color:var(--mut)}
+.clr:hover{color:var(--needle);border-color:var(--needle)}
+.dec.all{padding-inline:16px}
 .line>label,.line>.lab{font-family:var(--display);font-weight:700;font-size:clamp(1.4rem,3.4vw,2.4rem);letter-spacing:-.025em;line-height:1.1;white-space:nowrap}
 .field{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:52px;border-bottom:2px solid var(--line);padding:6px 0;min-width:0}
 .field:focus-within{border-color:var(--cobalt)}
@@ -203,6 +206,7 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
   .pl-ctl #pl-prev{display:none}
   nav button{padding:6px 8px}
   .line{grid-template-columns:1fr;gap:2px}
+  .clr{position:absolute;top:2px;right:0}
   .adn{grid-column:1}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 14px}
   .cover{font-size:1.2rem}
@@ -237,6 +241,7 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <div class="line">
       <label for="in-bands">Suena como</label>
       <div class="field" id="f-bands"><input id="in-bands" placeholder="una o varias bandas…" autocomplete="off" spellcheck="false"><ul class="ac" hidden></ul></div>
+      <button type="button" class="clr" id="clr-bands" hidden>Limpiar</button>
       <div class="adn" id="adn" hidden>
         <div class="adn-h"><strong id="adn-title">ADN sonoro</strong><span id="adn-sub">Tocá un rasgo para sumarlo al género</span></div>
         <div class="adn-tags" id="adn-tags"></div>
@@ -246,10 +251,12 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <div class="line">
       <label for="in-tags">Género</label>
       <div class="field" id="f-tags"><input id="in-tags" placeholder="género, estilo o sonido…" autocomplete="off" spellcheck="false"><ul class="ac" hidden></ul></div>
+      <button type="button" class="clr" id="clr-tags" hidden>Limpiar</button>
     </div>
     <div class="line">
       <span class="lab">De los</span>
       <div class="decs" id="decs"></div>
+      <button type="button" class="clr" id="clr-decs" hidden>Limpiar</button>
     </div>
 
     <div class="dial">
@@ -939,8 +946,10 @@ function chipField(fieldId, key, suggest, onChange) {
       c.onclick = () => { S[key].splice(i, 1); commit(); input.focus(); };
       field.insertBefore(c, input);
     });
+    $("clr-" + key).hidden = !S[key].length;
   };
   const commit = () => { save("w:" + key, S[key]); render(); onChange && onChange(); };
+  $("clr-" + key).onclick = () => { S[key].splice(0); input.value = ""; close(); commit(); input.focus(); };
   const addVal = v => {
     v = v.trim(); if (!v) return;
     if (!S[key].some(x => norm(x) === norm(v))) S[key].push(v);
@@ -1104,16 +1113,20 @@ $("adn-tags").addEventListener("click", e => {
 
 // ---------- Décadas ----------
 function renderDecs() {
-  $("decs").innerHTML = DECADES.map(d => `<button type="button" class="dec${S.decades.includes(d) ? " on" : ""}" data-d="${d}" aria-pressed="${S.decades.includes(d)}">’${String(d).slice(2)}</button>`).join("")
-    + `<label class="approx"><input type="checkbox" id="approx"${S.approx ? " checked" : ""}> aproximado (±2 años)</label>`
-    + `<span class="hint">${S.decades.length ? "" : "cualquier época"}</span>`;
-  $("approx").onchange = e => { S.approx = e.target.checked; save("w:approx", S.approx); };
+  const all = !S.decades.length; // sin décadas elegidas = cualquier época
+  $("decs").innerHTML = `<button type="button" class="dec all${all ? " on" : ""}" data-all="1" aria-pressed="${all}">Todo</button>`
+    + DECADES.map(d => `<button type="button" class="dec${S.decades.includes(d) ? " on" : ""}" data-d="${d}" aria-pressed="${S.decades.includes(d)}">’${String(d).slice(2)}</button>`).join("")
+    + (all ? "" : `<label class="approx"><input type="checkbox" id="approx"${S.approx ? " checked" : ""}> aproximado (±2 años)</label>`);
+  if (!all) $("approx").onchange = e => { S.approx = e.target.checked; save("w:approx", S.approx); };
+  $("clr-decs").hidden = all;
 }
+function clearDecs() { S.decades = []; save("w:decades", S.decades); renderDecs(); markAdn(); updateHint(); }
+$("clr-decs").onclick = clearDecs;
 function toggleDec(d) {
   const i = S.decades.indexOf(d); if (i >= 0) S.decades.splice(i, 1); else S.decades.push(d);
   save("w:decades", S.decades); renderDecs(); markAdn(); updateHint();
 }
-$("decs").addEventListener("click", e => { const b = e.target.closest(".dec"); if (b) toggleDec(+b.dataset.d); });
+$("decs").addEventListener("click", e => { const b = e.target.closest(".dec"); if (!b) return; if (b.dataset.all) clearDecs(); else toggleDec(+b.dataset.d); });
 
 // ---------- Dial ----------
 function renderDial() {
