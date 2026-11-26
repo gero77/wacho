@@ -11,7 +11,6 @@ try { var t = localStorage.getItem("w:theme"); if (t === '"light"' || t === '"da
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Wacho.mp3">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="wacho-192.png">
 <link rel="apple-touch-icon" href="wacho-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,10 +29,10 @@ try { var t = localStorage.getItem("w:theme"); if (t === '"light"' || t === '"da
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f1117; --card:#161a23; --ink:#e9ecf3; --mut:#8f97a8; --line:#262b36;
-  --cobalt:#8096ff; --soft:#1c2340; --needle:#ff6a50; --ok:#4cc38a; color-scheme:dark}}
+  --cobalt:#ff3da0; --soft:#3b1430; --needle:#fe048c; --ok:#4cc38a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1117; --card:#161a23; --ink:#e9ecf3; --mut:#8f97a8; --line:#262b36;
-  --cobalt:#8096ff; --soft:#1c2340; --needle:#ff6a50; --ok:#4cc38a; color-scheme:dark}
+  --cobalt:#ff3da0; --soft:#3b1430; --needle:#fe048c; --ok:#4cc38a; color-scheme:dark}
 :root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -52,7 +51,7 @@ a{color:var(--cobalt)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;flex-wrap:wrap}
 .logo{font-family:var(--display);font-weight:800;font-size:1.35rem;letter-spacing:-.02em;background:none;border:0;padding:0}
 .logo{display:flex;align-items:center;gap:10px}
-.logo .mark{width:34px;height:34px;flex:none;display:block}
+.logo .mark{width:34px;height:34px;flex:none;display:block;border-radius:8px}
 .logo i{font-style:normal;color:var(--cobalt)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:none;border:0;padding:6px 10px;border-radius:999px;color:var(--mut);font-size:.9rem}
@@ -84,6 +83,13 @@ button.cover{border:0;cursor:pointer;width:100%;text-align:left}
 .sh-info{display:grid;gap:6px;min-width:0;padding-right:36px}
 .sh-info h2{margin:0;font-size:1.5rem;letter-spacing:-.02em;line-height:1.15;text-wrap:balance}
 .sh-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.likebig{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 14px 7px 10px;font-weight:600;font-size:.88rem;margin-top:4px}
+.likebig .hrt{font-size:1.15rem;line-height:1;color:var(--mut)}
+.likebig .hrt.on{color:var(--needle)}
+.likebig:has(.hrt.on){border-color:var(--needle);color:var(--needle)}
+.pl-ctl .like.on{color:var(--needle)}
+.when{margin:0;font-size:.83rem;color:var(--cobalt);font-weight:500}
+.sec-h .clr{margin-left:auto}
 .pl{background:var(--soft);color:var(--cobalt);text-decoration:none;border-radius:999px;padding:7px 13px;font-size:.85rem;font-weight:600}
 .pl.q{background:transparent;border:1px solid var(--line);color:var(--mut);font-weight:500}
 .tracks{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:2px}
@@ -228,11 +234,12 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar"><img class="mark" src="logo.svg" alt="" width="34" height="34"><span>wacho<i>.mp3</i></span></button>
+  <button class="logo" data-view="buscar" aria-label="Wacho.mp3, ir a buscar"><img class="mark" src="logo-96.png" alt="" width="34" height="34"><span>wacho<i>.mp3</i></span></button>
   <nav>
     <button data-view="buscar" class="on">Buscar</button>
     <button data-view="guardados">Guardados<span class="n" id="n-fav"></span></button>
     <button data-view="escuchados">Escuchados<span class="n" id="n-heard"></span></button>
+    <button data-view="historial">Historial<span class="n" id="n-hist"></span></button>
   </nav>
   <div class="tools">
     <button class="pillbtn" id="install" hidden>Instalar app</button>
@@ -295,6 +302,11 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <div class="grid" id="fav-grid" style="margin-top:18px"></div>
   </section>
 
+  <section id="v-historial" hidden>
+    <div class="sec-h"><h2>Historial</h2><span class="hint">Los discos que abriste en Spotify, YouTube Music, Deezer, Apple Music o Bandcamp. Las previews no cuentan.</span><button type="button" class="clr" id="clr-hist">Borrar historial</button></div>
+    <div class="grid" id="hist-grid" style="margin-top:18px"></div>
+  </section>
+
   <section id="v-escuchados" hidden>
     <div class="sec-h"><h2>Escuchados</h2><span class="hint">No vuelven a aparecer en las búsquedas. Desmarcalos si querés que vuelvan.</span></div>
     <div class="grid" id="heard-grid" style="margin-top:18px"></div>
@@ -315,6 +327,7 @@ dialog .row p{margin:0;color:var(--mut);font-size:.88rem}
     <button class="pl-cover" id="pl-cover" aria-label="Ver disco"></button>
     <button class="pl-txt" id="pl-open" aria-label="Ver disco"><strong id="pl-t"></strong><span id="pl-a"></span></button>
     <div class="pl-ctl">
+      <button id="pl-like" class="like" aria-label="Guardar disco">♡</button>
       <button id="pl-prev" aria-label="Anterior">⏮</button>
       <button id="pl-play" class="main" aria-label="Reproducir">▶</button>
       <button id="pl-next" aria-label="Siguiente">⏭</button>
@@ -380,7 +393,7 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 const S = {
   bands: load("w:bands", []), tags: load("w:tags", []), decades: load("w:decades", [1990]),
   approx: load("w:approx", false), level: load("w:level", 2),
-  fav: load("w:fav", {}), heard: load("w:heard", {}),
+  fav: load("w:fav", {}), heard: load("w:heard", {}), hist: load("w:hist", {}),
   adn: [], queue: [], shown: new Set(), ctx: null, busy: false,
 };
 const albumKey = (artist, title) => norm(artist) + "|" + norm(title);
@@ -752,7 +765,12 @@ const PLATFORMS = [
   { p: "spotify", n: "Spotify" }, { p: "youtube", n: "YouTube Music" }, { p: "deezer", n: "Deezer" },
   { p: "apple", n: "Apple Music" }, { p: "bandcamp", n: "Bandcamp" },
 ];
-function card(a) {
+const fmtWhen = t => { const d = new Date(t), now = new Date(), day = 864e5;
+  const hm = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return "hoy " + hm;
+  if (d.toDateString() === new Date(now - day).toDateString()) return "ayer " + hm;
+  return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" }) + " " + hm; };
+function card(a, opts = {}) {
   const fav = !!S.fav[a.key], heard = !!S.heard[a.key];
   const caa = a.rg ? `https://coverartarchive.org/release-group/${a.rg}/front-250` : "";
   const src = a.img || caa, alt = a.img && caa ? caa : "";
@@ -761,7 +779,7 @@ function card(a) {
   return `<article class="rec" data-k="${esc(a.key)}">
     <button class="cover" data-act="open" style="background:${coverBg(a.artist)}" aria-label="Escuchar ${esc(a.title)}">${esc(ini(a.artist))}${src ? `<img loading="lazy" alt="" src="${esc(src)}"${alt ? ` data-alt="${esc(alt)}"` : ""}>` : ""}${a.dz ? `<span class="play" aria-hidden="true">▶</span>` : ""}</button>
     <div><h3>${esc(a.title)}</h3><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}</div></div>
-    <p class="why">${esc(a.why)}</p>
+    ${opts.hist && a.at ? `<p class="when">Abierto en ${esc(PNAME[a.via] || a.via)} · ${fmtWhen(a.at)}</p>` : `<p class="why">${esc(a.why)}</p>`}
     <div class="meta"><span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.comp ? "<span>compilado</span>" : ""}${pops ? `<span>${pops}</span>` : ""}</div>
     <div class="acts"><button data-act="open" class="listen">${a.dz ? "▶ Escuchar" : "Ver disco"}</button><button data-act="fav" class="${fav ? "on" : ""}" aria-label="${fav ? "Quitar de guardados" : "Guardar"}">${fav ? "♥" : "♡"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button></div>
     <div class="links">${PLATFORMS.filter(x => x.p !== "bandcamp" || known.bandcamp).map(x => `<a href="${esc(known[x.p] || fallbackUrl(x.p, a))}" data-p="${x.p}" target="_blank" rel="noopener">${x.n.replace(" Music", "")}</a>`).join("")}</div>
@@ -811,10 +829,23 @@ async function resolveLinks(a) {
   cset("ln:" + a.key, out);
   return out;
 }
+const findAlbum = k => ALB.get(k) || S.fav[k] || S.heard[k] || S.hist[k];
+const PNAME = Object.fromEntries(PLATFORMS.map(x => [x.p, x.n]));
+// Historial: solo los discos que abriste en una plataforma (no los que escuchaste en preview)
+function addHist(a, p) {
+  const { at, via, ...rest } = a;
+  delete S.hist[a.key];
+  S.hist[a.key] = { ...rest, at: Date.now(), via: p };
+  const keys = Object.keys(S.hist); if (keys.length > 300) delete S.hist[keys[0]]; // tope para no crecer sin fin
+  save("w:hist", S.hist); counts(); pushSync();
+  if (S.view === "historial") setView("historial");
+}
 document.addEventListener("click", async e => {
   const l = e.target.closest("a[data-p]"); if (!l) return;
-  const el = l.closest("[data-k]"), a = el && (ALB.get(el.dataset.k) || S.fav[el.dataset.k] || S.heard[el.dataset.k]);
-  if (!a || cget("ln:" + a.key)) return; // ya resuelto: el href es directo
+  const el = l.closest("[data-k]"), a = el && findAlbum(el.dataset.k);
+  if (!a) return;
+  addHist(a, l.dataset.p);
+  if (cget("ln:" + a.key)) return; // ya resuelto: el href es directo
   e.preventDefault();
   const w = window.open("about:blank", "_blank"); // se abre ya, para que el navegador no lo bloquee
   const links = await resolveLinks(a).catch(() => ({}));
@@ -831,19 +862,30 @@ document.addEventListener("error", e => {
 document.addEventListener("click", e => {
   const b = e.target.closest(".rec [data-act]"); if (!b) return;
   const el = b.closest(".rec"), k = el.dataset.k;
-  const a = ALB.get(k) || S.fav[k] || S.heard[k]; if (!a) return;
+  const a = findAlbum(k); if (!a) return;
   if (b.dataset.act === "open") { openAlbum(a, true); return; }
-  if (b.dataset.act === "fav") {
-    if (S.fav[k]) delete S.fav[k]; else S.fav[k] = a;
-    save("w:fav", S.fav);
-    if (S.view === "guardados" && !S.fav[k]) fadeOut(el); else el.outerHTML = card(a);
-  } else {
-    if (S.heard[k]) { delete S.heard[k]; save("w:heard", S.heard); if (S.view === "escuchados") fadeOut(el); else el.outerHTML = card(a); }
-    else { S.heard[k] = a; save("w:heard", S.heard); fadeOut(el); }
-  }
+  if (b.dataset.act === "fav") { toggleFav(a); return; }
+  if (S.heard[k]) { delete S.heard[k]; save("w:heard", S.heard); if (S.view === "escuchados") fadeOut(el); else el.outerHTML = card(a, cardOpts(el)); }
+  else { S.heard[k] = a; save("w:heard", S.heard); if (S.view === "historial") el.outerHTML = card(a, cardOpts(el)); else fadeOut(el); }
   counts();
   pushSync();
 });
+const cardOpts = el => ({ hist: !!el.closest("#hist-grid") });
+// Me gusta: se puede dar desde la tarjeta, la ficha del disco o el reproductor
+function toggleFav(a) {
+  const k = a.key;
+  if (S.fav[k]) delete S.fav[k]; else { const { at, via, ...rest } = a; S.fav[k] = rest; }
+  save("w:fav", S.fav); counts(); pushSync();
+  document.querySelectorAll(`.rec[data-k="${CSS.escape(k)}"]`).forEach(el => {
+    if (S.view === "guardados" && !S.fav[k] && el.closest("#fav-grid")) fadeOut(el); else el.outerHTML = card(a, cardOpts(el));
+  });
+  likeButtons();
+}
+function likeButtons() {
+  const set = (b, k) => { if (!b) return; const on = !!(k && S.fav[k]); b.classList.toggle("on", on); b.textContent = on ? "♥" : "♡"; b.setAttribute("aria-label", on ? "Quitar de guardados" : "Guardar disco"); b.title = on ? "Guardado" : "Guardar disco"; };
+  set($("sh-like"), $("sheet").dataset.k); set($("pl-like"), P.album?.key);
+  const sl = $("sh-like-txt"); if (sl) sl.textContent = S.fav[$("sheet").dataset.k] ? "Guardado" : "Me gusta";
+}
 function fadeOut(el) { el.classList.add("out"); setTimeout(() => el.remove(), 300); }
 
 // ---------- Ficha del disco y reproductor de previews ----------
@@ -856,12 +898,16 @@ async function openAlbum(a, autoplay) {
   const src = a.img || (a.rg ? `https://coverartarchive.org/release-group/${a.rg}/front-500` : "");
   $("sh-head").innerHTML = `<div class="cover big" style="background:${coverBg(a.artist)}">${esc(ini(a.artist))}${src ? `<img alt="" src="${esc(src)}">` : ""}</div>
     <div class="sh-info"><h2>${esc(a.title)}</h2><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}${a.comp ? " · compilado" : ""}</div>
-    <p class="why">${esc(a.why || "")}</p><div class="sh-links" id="sh-links"><span class="hint">Buscando el disco en cada plataforma…</span></div></div>`;
+    <p class="why">${esc(a.why || "")}</p>
+    <div><button type="button" class="likebig" id="sh-like-b"><span class="hrt" id="sh-like">♡</span><span id="sh-like-txt">Me gusta</span></button></div>
+    <div class="sh-links" id="sh-links"><span class="hint">Buscando el disco en cada plataforma…</span></div></div>`;
+  $("sh-like-b").onclick = () => toggleFav(a);
+  likeButtons();
   $("sh-tracks").innerHTML = a.dz ? `<p class="hint">Cargando canciones…</p>` : `<p class="hint">Este disco no está en Deezer, así que no hay previews. Podés escucharlo con los links de arriba.</p>`;
   if (!sh.open) sh.showModal();
   resolveLinks(a).then(links => {
     if (sh.dataset.k !== a.key) return;
-    $("sh-links").innerHTML = PLATFORMS.filter(x => links[x.p] || x.p !== "bandcamp").map(x => `<a class="pl${links[x.p] ? "" : " q"}" href="${esc(links[x.p] || fallbackUrl(x.p, a))}" target="_blank" rel="noopener" title="${links[x.p] ? "Abre el disco" : "No encontré el link directo: abre la búsqueda"}">${x.n}${links[x.p] ? "" : " ⌕"}</a>`).join("");
+    $("sh-links").innerHTML = PLATFORMS.filter(x => links[x.p] || x.p !== "bandcamp").map(x => `<a class="pl${links[x.p] ? "" : " q"}" data-p="${x.p}" href="${esc(links[x.p] || fallbackUrl(x.p, a))}" target="_blank" rel="noopener" title="${links[x.p] ? "Abre el disco" : "No encontré el link directo: abre la búsqueda"}">${x.n}${links[x.p] ? "" : " ⌕"}</a>`).join("");
     document.querySelectorAll(`.rec[data-k="${CSS.escape(a.key)}"] a[data-p]`).forEach(x => { x.href = links[x.dataset.p] || fallbackUrl(x.dataset.p, a); });
   });
   if (!a.dz) return;
@@ -879,7 +925,7 @@ function renderTracks(a, tracks) {
 }
 $("sh-tracks").addEventListener("click", e => {
   const b = e.target.closest("[data-ti]"); if (!b) return;
-  const a = ALB.get($("sheet").dataset.k) || S.fav[$("sheet").dataset.k] || S.heard[$("sheet").dataset.k];
+  const a = findAlbum($("sheet").dataset.k);
   const i = +b.dataset.ti;
   if (P.album?.key === a.key && P.i === i) { toggle(); return; }
   play(a, dzTracks.get(a.dz), i);
@@ -914,12 +960,14 @@ function updatePlayer() {
   $("pl-play").textContent = P.audio.paused ? "▶" : "❚❚";
   $("pl-play").setAttribute("aria-label", P.audio.paused ? "Reproducir" : "Pausar");
   document.querySelectorAll("#sh-tracks [data-ti]").forEach(b => b.classList.toggle("on", $("sheet").dataset.k === a.key && +b.dataset.ti === P.i));
+  likeButtons();
 }
 P.audio.addEventListener("ended", () => step(1));
 P.audio.addEventListener("play", updatePlayer);
 P.audio.addEventListener("pause", updatePlayer);
 P.audio.addEventListener("timeupdate", () => { $("pl-bar").style.width = (P.audio.duration ? P.audio.currentTime / P.audio.duration * 100 : 0) + "%"; });
 $("pl-play").onclick = toggle;
+$("pl-like").onclick = () => P.album && toggleFav(P.album);
 $("pl-prev").onclick = () => step(-1);
 $("pl-next").onclick = () => step(1);
 $("pl-open").onclick = () => P.album && openAlbum(P.album, false);
@@ -938,20 +986,24 @@ S.view = "buscar";
 function setView(v) {
   S.view = v;
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
-  for (const n of ["buscar", "guardados", "escuchados"]) $("v-" + n).hidden = n !== v;
+  for (const n of ["buscar", "guardados", "escuchados", "historial"]) $("v-" + n).hidden = n !== v;
   if (v === "guardados") renderList("fav-grid", S.fav, "Todavía no guardaste discos. Tocá “♡ Guardar” en cualquier recomendación.");
   if (v === "escuchados") renderList("heard-grid", S.heard, "Nada marcado como escuchado todavía.");
+  if (v === "historial") renderList("hist-grid", S.hist, "Todavía no abriste ningún disco en una plataforma. Cuando toques Spotify, YouTube, Deezer o Apple en un disco, aparece acá.", { hist: true });
+  $("clr-hist").hidden = !Object.keys(S.hist).length;
   window.scrollTo({ top: 0 });
 }
-function renderList(id, obj, empty) {
-  const list = Object.values(obj).reverse();
-  list.forEach(a => ALB.set(a.key, a));
-  $(id).innerHTML = list.length ? list.map(card).join("") : `<div class="empty" style="grid-column:1/-1">${empty}</div>`;
+function renderList(id, obj, empty, opts = {}) {
+  let list = Object.values(obj).reverse();
+  if (opts.hist) list.sort((a, b) => (b.at || 0) - (a.at || 0)); // lo último que abriste, primero
+  list.forEach(a => { if (!ALB.has(a.key)) ALB.set(a.key, a); });
+  $(id).innerHTML = list.length ? list.map(a => card(a, opts)).join("") : `<div class="empty" style="grid-column:1/-1">${empty}</div>`;
 }
 function counts() {
-  const f = Object.keys(S.fav).length, h = Object.keys(S.heard).length;
-  $("n-fav").textContent = f ? f : ""; $("n-heard").textContent = h ? h : "";
+  const f = Object.keys(S.fav).length, h = Object.keys(S.heard).length, hi = Object.keys(S.hist).length;
+  $("n-fav").textContent = f ? f : ""; $("n-heard").textContent = h ? h : ""; $("n-hist").textContent = hi ? hi : "";
 }
+$("clr-hist").onclick = () => { S.hist = {}; save("w:hist", S.hist); counts(); pushSync(); setView("historial"); };
 document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
 
 // ---------- Campos con chips y autocompletado ----------
@@ -1225,13 +1277,13 @@ async function getDb() {
 const syncCode = () => load("w:sync", "");
 function syncBadge(s) { $("sync-dot").className = "dot" + (s ? " " + s : ""); }
 function syncMsg(t, k) { $("sync-msg").textContent = t || ""; $("sync-msg").className = "sync-msg" + (k ? " " + k : ""); }
-const payload = () => JSON.stringify({ fav: S.fav, heard: S.heard });
+const payload = () => JSON.stringify({ fav: S.fav, heard: S.heard, hist: S.hist });
 function pushSync() {
   const code = syncCode(); if (!code) return;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(async () => {
     const p = payload(); if (p === lastPushed) return;
-    try { (await getDb()).collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, t: Date.now() }); lastPushed = p; syncBadge("on"); }
+    try { (await getDb()).collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, hist: S.hist, t: Date.now() }); lastPushed = p; syncBadge("on"); }
     catch (e) { console.warn(e); syncBadge("err"); }
   }, 400);
 }
@@ -1244,10 +1296,11 @@ async function subscribe(code) {
       if (snap.metadata.hasPendingWrites) return;
       if (!snap.exists) { syncBadge("err"); return; }
       const r = snap.data();
-      S.fav = r.fav || {}; S.heard = r.heard || {};
+      S.fav = r.fav || {}; S.heard = r.heard || {}; S.hist = r.hist || {};
       lastPushed = payload();
-      save("w:fav", S.fav); save("w:heard", S.heard); counts();
-      if (S.view === "guardados" || S.view === "escuchados") setView(S.view);
+      save("w:fav", S.fav); save("w:heard", S.heard); save("w:hist", S.hist); counts();
+      if (S.view === "guardados" || S.view === "escuchados" || S.view === "historial") setView(S.view);
+      likeButtons();
       syncBadge("on");
     }, e => { console.warn(e); syncBadge("err"); });
   } catch (e) { console.warn(e); syncBadge("err"); }
@@ -1259,7 +1312,7 @@ function renderSync() {
     <p class="hint">Este dispositivo está vinculado. En el otro, abrí Wacho.mp3, tocá el ícono de la cadena (arriba a la derecha) y escribí este código:</p>
     <div class="code" id="sync-code">${esc(code)}</div>
     <div class="go" style="margin-top:12px"><button class="btn ghost" data-s="copy">Copiar código</button><button class="btn danger" data-s="leave">Desvincular este dispositivo</button></div>`
-  : `<p class="hint">Vinculá tu PC y tu teléfono para tener los mismos Guardados y Escuchados en los dos. Lo que marques en uno aparece en el otro al instante.</p>
+  : `<p class="hint">Vinculá tu PC y tu teléfono para tener los mismos Guardados, Escuchados e Historial en los dos. Lo que marques en uno aparece en el otro al instante.</p>
     <div class="go" style="margin-top:10px"><button class="btn" data-s="create">Crear código</button><span class="hint">Usalo en el primer dispositivo (${nF} guardados, ${nH} escuchados).</span></div>
     <div class="row" style="margin-top:18px"><label for="sync-in">¿Ya tenés un código?</label>
       <div class="keyrow"><input class="codein" id="sync-in" maxlength="8" autocomplete="off" spellcheck="false" placeholder="XXXXXXXX"><button class="btn" data-s="join">Unirme</button></div>
@@ -1277,7 +1330,7 @@ $("sync-body").addEventListener("click", async e => {
     const d = await getDb();
     if (act === "create") {
       const code = newCode();
-      await d.collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, t: Date.now() });
+      await d.collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, hist: S.hist, t: Date.now() });
       save("w:sync", code); lastPushed = payload(); subscribe(code); renderSync();
       syncMsg("Listo. Escribí este código en el otro dispositivo.", "ok");
     } else {
@@ -1286,9 +1339,9 @@ $("sync-body").addEventListener("click", async e => {
       const snap = await d.collection(SYNC_COLL).doc(code).get();
       if (!snap.exists) { syncMsg("No existe ese código. Revisalo.", "err"); b.disabled = false; return; }
       const r = snap.data();
-      S.fav = { ...(r.fav || {}), ...S.fav }; S.heard = { ...(r.heard || {}), ...S.heard }; // se juntan las dos listas
-      save("w:fav", S.fav); save("w:heard", S.heard); counts();
-      await d.collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, t: Date.now() });
+      S.fav = { ...(r.fav || {}), ...S.fav }; S.heard = { ...(r.heard || {}), ...S.heard }; S.hist = { ...(r.hist || {}), ...S.hist }; // se juntan las listas
+      save("w:fav", S.fav); save("w:heard", S.heard); save("w:hist", S.hist); counts();
+      await d.collection(SYNC_COLL).doc(code).set({ v: 1, fav: S.fav, heard: S.heard, hist: S.hist, t: Date.now() });
       save("w:sync", code); lastPushed = payload(); subscribe(code); renderSync();
       syncMsg("Vinculado. Las listas ya están juntas en los dos dispositivos.", "ok");
     }
