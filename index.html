@@ -92,6 +92,7 @@ button.cover{border:0;cursor:pointer;width:100%;text-align:left}
 .likebig .hrt.on{color:var(--needle)}
 .likebig:has(.hrt.on){border-color:var(--needle);color:var(--needle)}
 .pl-ctl .like.on{color:var(--needle)}
+.meta .nodz{border-color:var(--needle);color:var(--needle)}
 .bdg{background:var(--needle)!important;color:#fff!important;border-color:transparent!important;font-weight:700}
 .exp-head{display:grid;grid-template-columns:150px 1fr;gap:22px;align-items:center}
 .exp-pic{position:relative;width:150px;height:150px;border-radius:50%;overflow:hidden;display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:800;font-size:2.2rem}
@@ -657,7 +658,9 @@ async function buildPool() {
   let list = [...pool.values()];
   // si hay bandas y géneros, primero los que aparecen en ambos lados
   const rank = p => (tags.length && p.inTag.size ? 2 : 0) + (p.via.size ? 1 : 0);
-  list.sort((a, b) => rank(b) - rank(a) || b.score - a.score);
+  // dentro de cada grupo, orden con azar: cada búsqueda con los mismos datos trae discos distintos
+  const jit = p => p.score * (0.5 + Math.random());
+  list = list.map(p => ({ p, k: jit(p) })).sort((a, b) => rank(b.p) - rank(a.p) || b.k - a.k).map(o => o.p);
   if (!bands.length) list = shuffleSoft(list);
   return list;
 }
@@ -725,9 +728,13 @@ async function albumsFor(artists) {
       // los más escuchados primero; los compilados solo si no hay un disco de estudio a mano
       const score = g => (rank.get(norm(g.title)) ?? 999) + (g.comp ? 15 : 0);
       uniq.sort((x, y) => score(x) - score(y) || x.date.localeCompare(y.date));
-      const opts = uniq.filter(g => !S.heard[albumKey(a.name, g.title)] && !S.shown.has(albumKey(a.name, g.title))).slice(0, 3);
+      const opts = uniq.filter(g => !S.heard[albumKey(a.name, g.title)] && !S.shown.has(albumKey(a.name, g.title))).slice(0, 4);
       if (!opts.length) return;
       // preferir la primera opción que esté en Deezer (tiene previews y link directo)
+      { // sorteo con peso: el más escuchado sale más seguido, pero no siempre (50 / 30 / 20 %)
+        const r = Math.random(), i = opts.length > 2 && r > 0.8 ? 2 : opts.length > 1 && r > 0.5 ? 1 : 0;
+        if (i) opts.unshift(...opts.splice(i, 1));
+      }
       let pick = opts[0], dzA = null;
       for (const g of opts) { const m = await findDz(a, g.title); if (m) { pick = g; dzA = m; break; } }
       found.push({
@@ -765,7 +772,10 @@ async function fillMore(first) {
       ctx.usedNear = true; ctx.near.forEach(n => n.near = true); S.queue.push(...ctx.near.sort((a, b) => b.score - a.score));
     }
     if (!S.queue.length) break;
-    const got = await albumsFor(S.queue.splice(0, 10));
+    // se sortean qué bandas entran en esta tanda (las primeras tienen más chances)
+    const pickN = Math.min(10, S.queue.length), batch = [];
+    for (let n = 0; n < pickN; n++) batch.push(...S.queue.splice(Math.floor(Math.pow(Math.random(), 1.6) * S.queue.length), 1));
+    const got = await albumsFor(batch);
     got.forEach(c => { S.shown.add(c.key); ALB.set(c.key, c); });
     if (got.length) grid.insertAdjacentHTML("beforeend", got.map(card).join("")); // aparecen a medida que llegan
     cards.push(...got);
@@ -811,7 +821,7 @@ function card(a, opts = {}) {
     <button class="cover" data-act="open" style="background:${coverBg(a.artist)}" aria-label="Escuchar ${esc(a.title)}">${esc(ini(a.artist))}${src ? `<img loading="lazy" alt="" src="${esc(src)}"${alt ? ` data-alt="${esc(alt)}"` : ""}>` : ""}${a.dz ? `<span class="play" aria-hidden="true">▶</span>` : ""}</button>
     <div><h3>${esc(a.title)}</h3><div class="by">${esc(a.artist)}${a.year ? " · " + esc(a.year) : ""}</div></div>
     ${opts.hist && a.at ? `<p class="when">Abierto en ${esc(PNAME[a.via] || a.via)} · ${fmtWhen(a.at)}</p>` : `<p class="why">${esc(a.why)}</p>`}
-    <div class="meta">${a.badge ? `<span class="bdg">${esc(a.badge)}</span>` : ""}<span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.comp ? "<span>compilado</span>" : ""}${pops ? `<span>${pops}</span>` : ""}</div>
+    <div class="meta">${a.badge ? `<span class="bdg">${esc(a.badge)}</span>` : ""}<span class="lv">${a.near ? "cerca · " : ""}${esc(LEVELS[a.lvl]?.n || "")}</span>${a.comp ? "<span>compilado</span>" : ""}${a.dz ? "" : `<span class="nodz" title="Sin previews: no está en Deezer">No está en Deezer</span>`}${pops ? `<span>${pops}</span>` : ""}</div>
     <div class="acts"><button data-act="open" class="listen">${a.dz ? "▶ Escuchar" : "Ver disco"}</button><button data-act="fav" class="${fav ? "on" : ""}" aria-label="${fav ? "Quitar de guardados" : "Guardar"}">${fav ? "♥" : "♡"}</button><button data-act="heard">${heard ? "Desmarcar" : "Ya lo escuché"}</button>${opts.hist ? `<button data-act="unhist" title="Quitar del historial">Quitar</button>` : ""}</div>
     <div class="links">${PLATFORMS.filter(x => x.p !== "bandcamp" || known.bandcamp).map(x => `<a href="${esc(known[x.p] || fallbackUrl(x.p, a))}" data-p="${x.p}" target="_blank" rel="noopener">${x.n.replace(" Music", "")}</a>`).join("")}</div>
   </article>`;
@@ -821,7 +831,7 @@ function card(a, opts = {}) {
 function fallbackUrl(p, a) {
   const q = encodeURIComponent(a.artist + " " + a.title);
   return {
-    spotify: `https://open.spotify.com/search/${q}/albums`, youtube: `https://music.youtube.com/search?q=${q}`,
+    spotify: `https://open.spotify.com/search/${q}`, youtube: `https://music.youtube.com/search?q=${q}`,
     deezer: a.dz ? `https://www.deezer.com/album/${a.dz}` : `https://www.deezer.com/search/${q}/album`,
     apple: `https://music.apple.com/search?term=${q}`, bandcamp: `https://bandcamp.com/search?q=${q}&item_type=a`,
   }[p];
